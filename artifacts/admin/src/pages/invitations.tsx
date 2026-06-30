@@ -25,9 +25,8 @@ export default function Invitations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: invitations, isLoading } = useListAdminInvitations({
-    params: statusFilter !== "all" ? { status: statusFilter as any } : {},
-  });
+  const params = statusFilter !== "all" ? { status: statusFilter as "pending" | "accepted" | "expired" | "revoked" } : undefined;
+  const { data: invitations, isLoading } = useListAdminInvitations(params);
 
   const revokeInvitation = useRevokeAdminInvitation();
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export default function Invitations() {
     setRevokingId(invId);
     try {
       await revokeInvitation.mutateAsync({ invId });
-      await queryClient.invalidateQueries({ queryKey: getListAdminInvitationsQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: getListAdminInvitationsQueryKey(params) });
       toast({ title: "Invitation revoked" });
     } catch (error: any) {
       toast({ title: "Revoke failed", description: error.message, variant: "destructive" });
@@ -149,9 +148,8 @@ export default function Invitations() {
                         >
                           {revokingId === inv.id
                             ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            : <XCircle className="h-3.5 w-3.5 mr-1" />
+                            : <><XCircle className="h-3.5 w-3.5 mr-1" />Revoke</>
                           }
-                          Revoke
                         </Button>
                       )}
                     </TableCell>

@@ -28,7 +28,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { data: authEnvelope } = useGetCurrentAuthUser();
 
   const handleLogout = async () => {
-    await logout.mutateAsync({});
+    await logout.mutateAsync();
     queryClient.invalidateQueries({ queryKey: getGetCurrentAuthUserQueryKey() });
     setLocation("/login");
   };
