@@ -32,6 +32,7 @@ interface InventorySummary { totalItems: number; reorderItems: number; totalStoc
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const api = async (path: string, opts?: RequestInit) => {
   const res = await fetch(`/api${path}`, {
+    credentials: "include",
     ...opts,
     headers: { "Content-Type": "application/json", ...opts?.headers },
   });

@@ -91,8 +91,7 @@ const ROLE_BADGE: Record<string, string> = {
 };
 
 function api<T = any>(method: string, path: string, body?: any): Promise<T> {
-  const base = import.meta.env.BASE_URL || "/";
-  const url = `${base.replace(/\/$/, "")}/api${path}`;
+  const url = `/api${path}`;
   return fetch(url, {
     method,
     credentials: "include",

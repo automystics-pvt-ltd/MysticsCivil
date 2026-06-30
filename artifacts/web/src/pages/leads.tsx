@@ -13,8 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/hooks/use-confirm";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const api = (path: string) => `${BASE}/api${path}`;
+const api = (path: string) => `/api${path}`;
 
 const STAGES: Record<string, { label: string; color: string }> = {
   prospect: { label: "Prospect", color: "bg-slate-100 text-slate-700" },

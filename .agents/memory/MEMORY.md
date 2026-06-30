@@ -5,3 +5,4 @@
 - [Lifecycle coupling pattern](lifecycle-coupling.md) — Lead→Tender via URL params (?fromLead=); Tender→Project via /projects/new?fromTender=; project-new.tsx reads tenderPrefill from useSearch().
 - [SaaS subscription layer](saas-subscription.md) — 3 tables (subscription_plans, tenant_subscriptions, tenant_invitations); plan limits enforced via loadTenantPlan + checkPlanLimit; super_admin gets uncapped virtual plan.
 - [Express router.use path scope](express-router-use-path-scope.md) — router.use(middleware) without a path prefix intercepts ALL requests; always use router.use("/path", middleware) for feature gates.
+- [API URL pattern](api-url-pattern.md) — Replit proxy routes /api/... to API server; NEVER use ${BASE_URL}/api/... (resolves to /web/api/... which hits Vite). All manual fetch calls must use /api/... directly.

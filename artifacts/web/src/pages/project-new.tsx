@@ -191,7 +191,7 @@ export default function NewProject() {
               headers: { "Content-Type": "application/json" },
               credentials: "include",
               body: JSON.stringify({ convertedToProjectId: project.id, status: "won" }),
-            }).catch(() => {});
+            }).catch((e: any) => console.warn("Tender link failed:", e?.message));
           }
           toast({ title: "Project created", description: `${project.name} is ready.` });
           setLocation(`/projects/${project.id}`);

@@ -12,8 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const api = (path: string) => `${BASE}/api${path}`;
+const api = (path: string) => `/api${path}`;
 
 const CLIENT_TYPES: Record<string, { label: string; color: string }> = {
   govt: { label: "Government", color: "bg-blue-100 text-blue-700" },

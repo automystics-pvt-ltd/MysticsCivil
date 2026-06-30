@@ -38,6 +38,15 @@ router.get("/projects/:projectId/wbs", requireAuth, async (req: Request, res: Re
   res.json(rows.map(serializeWbs));
 });
 
+router.get("/projects/:projectId/wbs-activities", requireAuth, async (req: Request, res: Response) => {
+  const rows = await db
+    .select()
+    .from(wbsActivitiesTable)
+    .where(eq(wbsActivitiesTable.projectId, req.params.projectId))
+    .orderBy(asc(wbsActivitiesTable.sortOrder), asc(wbsActivitiesTable.code));
+  res.json(rows.map(serializeWbs));
+});
+
 router.post(
   "/projects/:projectId/wbs",
   requireAuth,

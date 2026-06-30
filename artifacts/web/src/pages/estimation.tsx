@@ -543,7 +543,7 @@ function BoqPanel({ estimate }: { estimate: Estimate }) {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await fetch(`/api/estimates/${estimate.id}/boq-items/import`, { method: "POST", body: fd });
+      const res = await fetch(`/api/estimates/${estimate.id}/boq-items/import`, { method: "POST", credentials: "include", body: fd });
       if (!res.ok) { const err = await res.json(); toast({ title: "Import failed", description: err?.error, variant: "destructive" }); return; }
       const imported: any[] = await res.json();
       qc.invalidateQueries({ queryKey: getListBoqItemsQueryKey(estimate.id) });

@@ -3,8 +3,7 @@ import { BarChart2, Target, Award, TrendingUp, DollarSign, Briefcase, FolderOpen
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const api = (path: string) => `${BASE}/api${path}`;
+const api = (path: string) => `/api${path}`;
 
 function fmt(v: number) {
   if (v >= 1e7) return `₹${(v / 1e7).toFixed(1)}Cr`;

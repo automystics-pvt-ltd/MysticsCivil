@@ -9,9 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { UpgradePromptModal } from "@/components/upgrade-prompt-modal";
 import { Zap, CheckCircle2, XCircle, RefreshCw, CreditCard, Users, FolderOpen, HardDrive, Minus } from "lucide-react";
 
-const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
 async function fetchPlans() {
-  const r = await fetch(`${API_BASE}/api/subscription-plans`);
+  const r = await fetch(`/api/subscription-plans`);
   if (!r.ok) throw new Error("Failed to fetch plans");
   return r.json() as Promise<Array<{ id: string; name: string; priceMonthly: string | null; features: Record<string, boolean | string> | null }>>;
 }

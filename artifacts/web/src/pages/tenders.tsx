@@ -13,8 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
-const api = (path: string) => `${BASE}/api${path}`;
+const api = (path: string) => `/api${path}`;
 
 const STATUSES: Record<string, { label: string; color: string }> = {
   upcoming: { label: "Upcoming", color: "bg-slate-100 text-slate-700" },
