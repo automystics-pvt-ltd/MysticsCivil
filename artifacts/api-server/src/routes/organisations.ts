@@ -322,12 +322,12 @@ router.patch(
       .update(userProfilesTable)
       .set({ role, updatedAt: new Date() } as any)
       .where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.organisationId, organisationId)))
-      .returning({ userId: userProfilesTable.userId, role: userProfilesTable.role });
+      .returning({ userId: userProfilesTable.userId });
     if (!updated) {
       res.status(404).json({ error: "Member not found" });
       return;
     }
-    res.json(updated);
+    res.json({ success: true });
   },
 );
 

@@ -147,12 +147,17 @@ export default function JoinPage() {
                       <strong>{inv.email}</strong>. Please sign out and use the invite link again.
                     </p>
                   </div>
-                  <Link href="/login">
-                    <Button variant="outline" className="w-full">
-                      <LogIn className="h-4 w-4 mr-2" />
-                      Sign out & switch account
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={async () => {
+                      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+                      setLocation("/login");
+                    }}
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Sign out & switch account
+                  </Button>
                 </div>
               )
             ) : (

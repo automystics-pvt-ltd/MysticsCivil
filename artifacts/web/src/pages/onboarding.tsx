@@ -14,7 +14,9 @@ import {
   useUpdateOrganisationModules,
   useCreateOrgInvitation,
   useCompleteOrgOnboarding,
+  getGetMyProfileQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const USER_ROLES = ["owner","pm","site_engineer","qs","finance","contractor","qc","store","hr","admin"] as const;
 
@@ -94,6 +96,7 @@ export default function Onboarding() {
   const [pendingInvites, setPendingInvites] = useState<{ email: string; role: string }[]>([]);
   const [inviteSent, setInviteSent] = useState<string[]>([]);
 
+  const queryClient = useQueryClient();
   const updateOrg = useUpdateOrganisation();
   const updateModules = useUpdateOrganisationModules();
   const createInvitation = useCreateOrgInvitation();
@@ -127,6 +130,8 @@ export default function Onboarding() {
         }
       }
       await completeOnboarding.mutateAsync({ organisationId: orgId });
+      // Invalidate profile cache so OnboardingGate sees onboardingCompletedAt and stops redirecting
+      await queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
       toast({ title: "Setup complete!", description: "Welcome to KattidaCore." });
       setLocation("/");
     } catch (err: any) {
@@ -141,6 +146,8 @@ export default function Onboarding() {
     setBusy(true);
     try {
       await completeOnboarding.mutateAsync({ organisationId: orgId });
+      // Invalidate profile cache so OnboardingGate sees onboardingCompletedAt and stops redirecting
+      await queryClient.invalidateQueries({ queryKey: getGetMyProfileQueryKey() });
     } catch {
     } finally {
       setBusy(false);
