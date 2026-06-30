@@ -1,0 +1,4692 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: OCMS — Construction ERP API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: Auth
+  - name: Me
+  - name: Organisations
+  - name: Projects
+  - name: WBS
+  - name: Milestones
+  - name: DPR
+  - name: Photos
+  - name: Documents
+  - name: Issues
+  - name: Approvals
+  - name: Dashboard
+  - name: Financial
+  - name: SupplyChain
+  - name: Workforce
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+paths:
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UploadUrlRequest' }
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadUrlResponse' }
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema: { type: string, format: binary }
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          description: Failed to serve public object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema: { type: string, format: binary }
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          description: Failed to serve object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/user:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAuthUser
+      summary: Get the currently authenticated user
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: '#/components/parameters/SessionCookie'
+      responses:
+        '200':
+          description: Auth status resolved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: registerUser
+      summary: Create a new user account and organisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created and session started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginUser
+      summary: Sign in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Session created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserEnvelope'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logoutUser
+      summary: Clear the current session
+      responses:
+        '200':
+          description: Logout processed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutSuccess'
+
+  /me/profile:
+    get:
+      tags: [Me]
+      operationId: getMyProfile
+      summary: Get my OCMS profile (role, organisation)
+      responses:
+        '200':
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProfile'
+    patch:
+      tags: [Me]
+      operationId: updateMyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MyProfileUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProfile'
+
+  /organisations:
+    get:
+      tags: [Organisations]
+      operationId: listOrganisations
+      responses:
+        '200':
+          description: List of organisations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Organisation' }
+    post:
+      tags: [Organisations]
+      operationId: createOrganisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrganisationInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organisation' }
+  /organisations/{organisationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    get:
+      tags: [Organisations]
+      operationId: getOrganisation
+      responses:
+        '200':
+          description: Organisation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organisation' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    patch:
+      tags: [Organisations]
+      operationId: updateOrganisation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrganisationUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Organisation' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /modules:
+    get:
+      tags: [Modules]
+      operationId: listModules
+      summary: Canonical list of toggleable modules
+      responses:
+        '200':
+          description: Module registry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [modules]
+                properties:
+                  modules:
+                    type: array
+                    items: { type: string }
+  /organisations/{organisationId}/modules:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    patch:
+      tags: [Modules]
+      operationId: updateOrganisationModules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: [array, 'null']
+                  items: { type: string }
+      responses:
+        '200':
+          description: Updated org modules
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [organisationId, enabledModules]
+                properties:
+                  organisationId: { type: string }
+                  enabledModules:
+                    type: [array, 'null']
+                    items: { type: string }
+  /organisations/{organisationId}/users:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    get:
+      tags: [Organisations]
+      operationId: listOrganisationUsers
+      responses:
+        '200':
+          description: Users belonging to the organisation
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OrganisationUser' }
+  /projects/{projectId}/modules:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    patch:
+      tags: [Modules]
+      operationId: updateProjectModules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: [array, 'null']
+                  items: { type: string }
+      responses:
+        '200':
+          description: Updated project module override
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projectId, enabledModulesOverride]
+                properties:
+                  projectId: { type: string }
+                  enabledModulesOverride:
+                    type: [array, 'null']
+                    items: { type: string }
+  /projects/{projectId}/access:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [ProjectAccess]
+      operationId: listProjectAccess
+      responses:
+        '200':
+          description: Users with access to the project
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProjectAccessEntry' }
+    post:
+      tags: [ProjectAccess]
+      operationId: grantProjectAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string }
+      responses:
+        '200':
+          description: Already had access (idempotent)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectAccessEntry' }
+        '201':
+          description: Access granted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectAccessEntry' }
+  /projects/{projectId}/access/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [ProjectAccess]
+      operationId: revokeProjectAccess
+      responses:
+        '204':
+          description: Revoked
+
+  /geocode/reverse:
+    post:
+      tags: [Organisations]
+      operationId: reverseGeocode
+      summary: Reverse-geocode lat/lon into a human address (OpenStreetMap Nominatim)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReverseGeocodeRequest' }
+      responses:
+        '200':
+          description: Geocoded result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReverseGeocodeResponse' }
+        '400':
+          description: Invalid coordinates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Project' }
+    post:
+      tags: [Projects]
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+  /projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Projects]
+      operationId: getProject
+      responses:
+        '200':
+          description: Project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+    patch:
+      tags: [Projects]
+      operationId: updateProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProjectUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      responses:
+        '204':
+          description: Deleted
+
+  /projects/{projectId}/dashboard:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Dashboard]
+      operationId: getProjectDashboard
+      summary: 6-panel project dashboard data (health, cost, gantt, activities, photos, pending)
+      responses:
+        '200':
+          description: Project dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectDashboard' }
+
+  /projects/{projectId}/wbs:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [WBS]
+      operationId: listProjectWbs
+      responses:
+        '200':
+          description: WBS activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WbsActivity' }
+    post:
+      tags: [WBS]
+      operationId: createWbsActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WbsActivityInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WbsActivity' }
+  /wbs/{activityId}:
+    parameters:
+      - name: activityId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [WBS]
+      operationId: updateWbsActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WbsActivityUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WbsActivity' }
+    delete:
+      tags: [WBS]
+      operationId: deleteWbsActivity
+      responses:
+        '204':
+          description: Deleted
+
+  /projects/{projectId}/milestones:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Milestones]
+      operationId: listProjectMilestones
+      responses:
+        '200':
+          description: Milestones
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Milestone' }
+    post:
+      tags: [Milestones]
+      operationId: createMilestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MilestoneInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Milestone' }
+  /milestones/{milestoneId}:
+    parameters:
+      - name: milestoneId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Milestones]
+      operationId: updateMilestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MilestoneUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Milestone' }
+
+  /projects/{projectId}/dprs:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [DPR]
+      operationId: listProjectDprs
+      responses:
+        '200':
+          description: DPRs
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Dpr' }
+    post:
+      tags: [DPR]
+      operationId: createDpr
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DprInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dpr' }
+  /dprs/{dprId}:
+    parameters:
+      - name: dprId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [DPR]
+      operationId: getDpr
+      responses:
+        '200':
+          description: DPR detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DprDetail' }
+  /dprs/{dprId}/submit:
+    parameters:
+      - name: dprId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [DPR]
+      operationId: submitDpr
+      responses:
+        '200':
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dpr' }
+  /dprs/{dprId}/approve:
+    parameters:
+      - name: dprId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [DPR]
+      operationId: approveDpr
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DprApprovalInput' }
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dpr' }
+
+  /projects/{projectId}/photos:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Photos]
+      operationId: listProjectPhotos
+      responses:
+        '200':
+          description: Photos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SitePhoto' }
+    post:
+      tags: [Photos]
+      operationId: createSitePhoto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SitePhotoInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SitePhoto' }
+
+  /projects/{projectId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Documents]
+      operationId: listProjectDocuments
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Document' }
+    post:
+      tags: [Documents]
+      operationId: createDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Document' }
+
+  /projects/{projectId}/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+      - name: documentId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [Documents]
+      operationId: deleteDocument
+      responses:
+        '204':
+          description: Deleted
+
+  /projects/{projectId}/issues:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Issues]
+      operationId: listProjectIssues
+      responses:
+        '200':
+          description: Issues
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Issue' }
+    post:
+      tags: [Issues]
+      operationId: createIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Issue' }
+  /issues/{issueId}:
+    parameters:
+      - name: issueId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Issues]
+      operationId: updateIssue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Issue' }
+
+  /approvals:
+    get:
+      tags: [Approvals]
+      operationId: listApprovals
+      summary: Pending approvals queue (with aging)
+      responses:
+        '200':
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ApprovalItem' }
+  /approvals/{approvalId}/resolve:
+    parameters:
+      - name: approvalId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Approvals]
+      operationId: resolveApproval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalResolutionInput' }
+      responses:
+        '200':
+          description: Resolved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApprovalItem' }
+
+  /projects/{projectId}/estimates:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Estimation]
+      operationId: listProjectEstimates
+      responses:
+        '200':
+          description: Estimates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Estimate' }
+    post:
+      tags: [Estimation]
+      operationId: createEstimate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+
+  /estimates/{estimateId}:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Estimation]
+      operationId: getEstimate
+      responses:
+        '200':
+          description: Estimate
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+    patch:
+      tags: [Estimation]
+      operationId: updateEstimate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+    delete:
+      tags: [Estimation]
+      operationId: deleteEstimate
+      responses:
+        '204':
+          description: Deleted
+
+  /estimates/{estimateId}/cost-heads:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Estimation]
+      operationId: listEstimateCostHeads
+      responses:
+        '200':
+          description: Cost heads
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EstimateCostHead' }
+    put:
+      tags: [Estimation]
+      operationId: replaceEstimateCostHeads
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/EstimateCostHeadInput' }
+      responses:
+        '200':
+          description: Updated cost heads
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EstimateCostHead' }
+
+  /estimates/{estimateId}/boq-items:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Estimation]
+      operationId: listBoqItems
+      responses:
+        '200':
+          description: BOQ items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BoqItem' }
+    post:
+      tags: [Estimation]
+      operationId: createBoqItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BoqItemInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BoqItem' }
+
+  /boq-items/{itemId}:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Estimation]
+      operationId: updateBoqItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BoqItemUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BoqItem' }
+    delete:
+      tags: [Estimation]
+      operationId: deleteBoqItem
+      responses:
+        '204':
+          description: Deleted
+
+  /boq-items/{itemId}/rate-analysis:
+    parameters:
+      - name: itemId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Estimation]
+      operationId: listRateAnalysisComponents
+      responses:
+        '200':
+          description: Rate analysis components
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RateAnalysisComponent' }
+    put:
+      tags: [Estimation]
+      operationId: replaceRateAnalysisComponents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/RateAnalysisComponentInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RateAnalysisComponent' }
+
+  /projects/{projectId}/boq-vs-actual:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Estimation]
+      operationId: getBoqVsActual
+      summary: BOQ vs actual rate variance comparison
+      responses:
+        '200':
+          description: Comparison result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BoqVsActualResult' }
+
+  /dsr-rates:
+    get:
+      tags: [DSR]
+      operationId: listDsrRates
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: trade
+          in: query
+          schema: { type: string }
+        - name: state
+          in: query
+          schema: { type: string }
+        - name: cityTier
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: DSR rates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DsrRate' }
+    post:
+      tags: [DSR]
+      operationId: createDsrRate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DsrRateInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DsrRate' }
+
+  /dsr-rates/{rateId}:
+    parameters:
+      - name: rateId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [DSR]
+      operationId: updateDsrRate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DsrRateUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DsrRate' }
+    delete:
+      tags: [DSR]
+      operationId: deleteDsrRate
+      responses:
+        '204':
+          description: Deleted
+
+  /dsr-rates/bulk-upsert:
+    post:
+      tags: [DSR]
+      operationId: bulkUpsertDsrRates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BulkRateUpsertInput' }
+      responses:
+        '200':
+          description: Upsert result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSyncResult' }
+
+  /dsr-rates/escalate:
+    post:
+      tags: [DSR]
+      operationId: escalateDsrRates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EscalationInput' }
+      responses:
+        '200':
+          description: Escalation result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSyncResult' }
+
+  /rate-sources:
+    get:
+      tags: [DSR]
+      operationId: listRateSources
+      responses:
+        '200':
+          description: Rate sources
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RateSource' }
+    post:
+      tags: [DSR]
+      operationId: createRateSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RateSourceInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSource' }
+
+  /rate-sources/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [DSR]
+      operationId: updateRateSource
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RateSourceUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSource' }
+    delete:
+      tags: [DSR]
+      operationId: deleteRateSource
+      responses:
+        '204':
+          description: Deleted
+
+  /rate-sources/{id}/sync:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [DSR]
+      operationId: syncRateSource
+      responses:
+        '200':
+          description: Sync result
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RateSyncResult' }
+
+  /projects/{projectId}/variation-orders:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [VariationOrders]
+      operationId: listVariationOrders
+      responses:
+        '200':
+          description: Variation orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/VariationOrder' }
+    post:
+      tags: [VariationOrders]
+      operationId: createVariationOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationOrderInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationOrder' }
+
+  /variation-orders/{voId}:
+    parameters:
+      - name: voId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [VariationOrders]
+      operationId: getVariationOrder
+      responses:
+        '200':
+          description: VO
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationOrder' }
+    patch:
+      tags: [VariationOrders]
+      operationId: updateVariationOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationOrderUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationOrder' }
+
+  /estimates/{estimateId}/boq-items/generate-abstract:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Estimation]
+      operationId: generateAbstractBoqItems
+      summary: Generate trade-wise abstract BOQ rows from DSR benchmark rates (L2)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [builtUpArea]
+              properties:
+                builtUpArea:
+                  type: number
+                  description: Built-up area in sqm — used as quantity for each trade row
+                cityTier:
+                  type: string
+                  description: City tier for DSR rate selection (T1/T2/T3)
+                state:
+                  type: string
+                  description: State name for DSR rate selection
+      responses:
+        '200':
+          description: Generated abstract BOQ items (one per trade)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BoqItem' }
+        '404':
+          description: No DSR rates found for selected state/tier
+        '409':
+          description: Estimate is locked
+
+  /estimates/{estimateId}/boq-items/import:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Estimation]
+      operationId: importBoqItemsXlsx
+      summary: Import BOQ items from Excel (xlsx)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required: [file]
+      responses:
+        '201':
+          description: Imported BOQ items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BoqItem' }
+        '409':
+          description: Estimate is locked
+
+  /estimates/{estimateId}/boq-items/export:
+    parameters:
+      - name: estimateId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Estimation]
+      operationId: exportBoqItemsXlsx
+      summary: Export BOQ items as Excel (xlsx)
+      responses:
+        '200':
+          description: Excel workbook
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema: { type: string, format: binary }
+
+
+  /projects/{projectId}/work-orders:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [WorkOrders]
+      operationId: listWorkOrders
+      responses:
+        '200':
+          description: Work order estimates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkOrderEstimate' }
+    post:
+      tags: [WorkOrders]
+      operationId: createWorkOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkOrderInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrderEstimate' }
+
+  /work-orders/{woId}:
+    parameters:
+      - name: woId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [WorkOrders]
+      operationId: getWorkOrder
+      responses:
+        '200':
+          description: Work order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrderEstimate' }
+    patch:
+      tags: [WorkOrders]
+      operationId: updateWorkOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WorkOrderUpdate' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkOrderEstimate' }
+
+  /work-orders/{woId}/items:
+    parameters:
+      - name: woId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [WorkOrders]
+      operationId: listWorkOrderItems
+      responses:
+        '200':
+          description: Work order items
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkOrderEstimateItem' }
+    put:
+      tags: [WorkOrders]
+      operationId: replaceWorkOrderItems
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items: { $ref: '#/components/schemas/WorkOrderItemInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkOrderEstimateItem' }
+
+  /dashboard/portfolio:
+    get:
+      tags: [Dashboard]
+      operationId: getPortfolioDashboard
+      summary: Portfolio KPI summary + live project status table
+      responses:
+        '200':
+          description: Portfolio dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PortfolioDashboard' }
+  /dashboard/activity-feed:
+    get:
+      tags: [Dashboard]
+      operationId: getActivityFeed
+      summary: Recent activity across all projects
+      responses:
+        '200':
+          description: Activity feed
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ActivityFeedItem' }
+  /dashboard/safety-trends:
+    get:
+      tags: [Dashboard]
+      operationId: getSafetyTrends
+      summary: Portfolio-wide monthly JSA + IS-code material test trends
+      responses:
+        '200':
+          description: Safety + QC trend tiles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SafetyTrendsDashboard' }
+
+  # ── Financial: Contractor Bills ──────────────────────────────────────────────
+  /projects/{projectId}/contractor-bills:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listContractorBills
+      summary: List contractor RA bills for a project
+      responses:
+        '200':
+          description: Contractor bills
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ContractorBill' }
+    post:
+      tags: [Financial]
+      operationId: createContractorBill
+      summary: Submit a new contractor RA bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [billNumber, grossAmount]
+              properties:
+                billNumber: { type: string }
+                grossAmount: { type: number }
+                workOrderId: { type: string }
+                billDate: { type: string, format: date-time }
+                periodFrom: { type: string, format: date-time }
+                periodTo: { type: string, format: date-time }
+                invoiceUrl: { type: string }
+                measurementUrl: { type: string }
+                remarks: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorBill' }
+
+  /contractor-bills/{billId}:
+    parameters:
+      - name: billId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Financial]
+      operationId: getContractorBill
+      responses:
+        '200':
+          description: Bill
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorBill' }
+    patch:
+      tags: [Financial]
+      operationId: updateContractorBill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remarks: { type: string }
+                invoiceUrl: { type: string }
+                measurementUrl: { type: string }
+                grossAmount: { type: number }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorBill' }
+
+  /contractor-bills/{billId}/advance:
+    parameters:
+      - name: billId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Financial]
+      operationId: advanceContractorBill
+      summary: Advance bill to next workflow step
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remarks: { type: string }
+                utr: { type: string }
+                paymentMode: { type: string, enum: [neft, rtgs, upi, cheque] }
+      responses:
+        '200':
+          description: Advanced
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractorBill' }
+
+  /contractor-bills/{billId}/deductions:
+    parameters:
+      - name: billId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Financial]
+      operationId: listBillDeductions
+      responses:
+        '200':
+          description: Deductions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BillDeduction' }
+
+  /contractor-bills/{billId}/release-payment:
+    parameters:
+      - name: billId
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Financial]
+      operationId: releaseContractorPayment
+      summary: Release payment (Finance role)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { type: string, enum: [neft, rtgs, upi, cheque] }
+                utr: { type: string }
+                bankName: { type: string }
+                accountNumber: { type: string }
+                ifscCode: { type: string }
+      responses:
+        '200':
+          description: Payment released
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bill: { $ref: '#/components/schemas/ContractorBill' }
+                  voucher: { $ref: '#/components/schemas/PaymentVoucher' }
+
+  /contractor-bills/{billId}/vouchers:
+    parameters:
+      - name: billId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Financial]
+      operationId: listPaymentVouchers
+      responses:
+        '200':
+          description: Vouchers
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PaymentVoucher' }
+
+  # ── Financial: Client Invoices ────────────────────────────────────────────────
+  /projects/{projectId}/client-invoices:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listClientInvoices
+      responses:
+        '200':
+          description: Client invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ClientInvoice' }
+    post:
+      tags: [Financial]
+      operationId: createClientInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [invoiceNumber, clientName, grossAmount]
+              properties:
+                invoiceNumber: { type: string }
+                clientName: { type: string }
+                grossAmount: { type: number }
+                invoiceDate: { type: string, format: date-time }
+                dueDate: { type: string, format: date-time }
+                milestoneId: { type: string }
+                cgstRate: { type: number }
+                sgstRate: { type: number }
+                igstRate: { type: number }
+                reraReference: { type: string }
+                notes: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientInvoice' }
+
+  /client-invoices/{invoiceId}:
+    parameters:
+      - name: invoiceId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Financial]
+      operationId: getClientInvoice
+      responses:
+        '200':
+          description: Invoice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientInvoice' }
+    patch:
+      tags: [Financial]
+      operationId: updateClientInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [draft, sent, acknowledged, paid, overdue] }
+                irnNumber: { type: string }
+                notes: { type: string }
+                amountReceived: { type: number }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientInvoice' }
+
+  # ── Financial: Ledger ─────────────────────────────────────────────────────────
+  /projects/{projectId}/ledger-accounts:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listLedgerAccounts
+      responses:
+        '200':
+          description: Chart of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LedgerAccount' }
+    post:
+      tags: [Financial]
+      operationId: createLedgerAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [accountCode, accountName, accountType]
+              properties:
+                accountCode: { type: string }
+                accountName: { type: string }
+                accountType: { type: string, enum: [asset, liability, capital, revenue, expenditure, tax] }
+                parentAccountId: { type: string }
+                openingBalance: { type: number }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LedgerAccount' }
+
+  /projects/{projectId}/ledger-entries:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listLedgerEntries
+      responses:
+        '200':
+          description: Journal entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/LedgerEntry' }
+    post:
+      tags: [Financial]
+      operationId: createLedgerEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entryNumber, narration, amount]
+              properties:
+                entryNumber: { type: string }
+                narration: { type: string }
+                amount: { type: number }
+                entryDate: { type: string, format: date-time }
+                entityType: { type: string }
+                entityId: { type: string }
+                debitAccountId: { type: string }
+                creditAccountId: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LedgerEntry' }
+
+  # ── Financial: Reports & Analytics ───────────────────────────────────────────
+  /projects/{projectId}/payment-analytics:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: getPaymentAnalytics
+      summary: Payment analytics — 5 KPI tiles + aging + trend
+      responses:
+        '200':
+          description: Analytics
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentAnalytics' }
+
+  /projects/{projectId}/financial-summary:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: getFinancialSummary
+      summary: P&L summary, trial balance, payables, receivables
+      responses:
+        '200':
+          description: Financial summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FinancialSummary' }
+
+  /projects/{projectId}/tds-register:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listTdsEntries
+      responses:
+        '200':
+          description: TDS register
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TdsEntry' }
+
+  /projects/{projectId}/gst-register:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listGstEntries
+      responses:
+        '200':
+          description: GST register (GSTR-1/3B)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GstEntry' }
+
+  /projects/{projectId}/retention-ledger:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listRetentionLedger
+      responses:
+        '200':
+          description: Retention ledger entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/RetentionLedgerEntry' }
+
+  /projects/{projectId}/advance-ledger:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: listAdvanceLedger
+      responses:
+        '200':
+          description: Advance ledger entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdvanceLedgerEntry' }
+
+  /projects/{projectId}/aging-report:
+    parameters:
+      - $ref: '#/components/parameters/ProjectIdParam'
+    get:
+      tags: [Financial]
+      operationId: getAgingReport
+      summary: Outstanding bills aging by 0-30/31-60/61-90/>90 days
+      responses:
+        '200':
+          description: Aging report
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgingReport' }
+
+  # ─── SupplyChain — Vendors ──────────────────────────────────────────────────
+  /vendors:
+    get:
+      operationId: listVendors
+      tags: [SupplyChain]
+      summary: List all vendors
+      parameters:
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object }
+    post:
+      operationId: createVendor
+      tags: [SupplyChain]
+      summary: Create vendor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                code: { type: string }
+                contactPerson: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                address: { type: string }
+                city: { type: string }
+                state: { type: string }
+                pincode: { type: string }
+                gstNumber: { type: string }
+                pan: { type: string }
+                msmeCategory: { type: string }
+                bankName: { type: string }
+                accountNumber: { type: string }
+                ifscCode: { type: string }
+                organisationId: { type: string }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { type: object }
+
+  /vendors/{vendorId}:
+    get:
+      operationId: getVendor
+      tags: [SupplyChain]
+      summary: Get vendor
+      parameters:
+        - { in: path, name: vendorId, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+    patch:
+      operationId: updateVendor
+      tags: [SupplyChain]
+      summary: Update vendor
+      parameters:
+        - { in: path, name: vendorId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                status: { type: string }
+                blacklistReason: { type: string }
+                contactPerson: { type: string }
+                email: { type: string }
+                phone: { type: string }
+                city: { type: string }
+                state: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { type: object }
+
+  /vendors/{vendorId}/documents:
+    get:
+      operationId: listVendorDocuments
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: vendorId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: addVendorDocument
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: vendorId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentType: { type: string }
+                documentUrl: { type: string }
+                fileName: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/avl:
+    get:
+      operationId: getProjectAvl
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: addToAvl
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendorId]
+              properties:
+                vendorId: { type: string }
+                materialCategory: { type: string }
+                notes: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Stores ──────────────────────────────────────────────────────────────────
+  /projects/{projectId}/stores:
+    get:
+      operationId: listStores
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createStore
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                storeType: { type: string }
+                location: { type: string }
+                storeKeeperName: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Inventory ────────────────────────────────────────────────────────────────
+  /projects/{projectId}/inventory:
+    get:
+      operationId: listInventoryItems
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: storeId, schema: { type: string } }
+        - { in: query, name: reorderOnly, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createInventoryItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemName]
+              properties:
+                itemName: { type: string }
+                itemCode: { type: string }
+                category: { type: string }
+                unit: { type: string }
+                storeId: { type: string }
+                minStockLevel: { type: number }
+                maxStockLevel: { type: number }
+                openingStock: { type: number }
+                avgRate: { type: number }
+                hsnCode: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/inventory/{itemId}:
+    patch:
+      operationId: updateInventoryItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: path, name: itemId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/stock-ledger/{itemId}:
+    get:
+      operationId: getStockLedger
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: path, name: itemId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+
+  # ─── Material Indents ─────────────────────────────────────────────────────────
+  /projects/{projectId}/material-indents:
+    get:
+      operationId: listMaterialIndents
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createMaterialIndent
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [indentNumber]
+              properties:
+                indentNumber: { type: string }
+                wbsActivityId: { type: string }
+                requiredByDate: { type: string }
+                remarks: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /material-indents/{indentId}:
+    get:
+      operationId: getMaterialIndent
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /material-indents/{indentId}/items:
+    get:
+      operationId: listIndentItems
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: addIndentItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemName, requiredQty]
+              properties:
+                itemName: { type: string }
+                unit: { type: string }
+                requiredQty: { type: number }
+                inventoryItemId: { type: string }
+                specification: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /material-indents/{indentId}/submit:
+    post:
+      operationId: submitMaterialIndent
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /material-indents/{indentId}/approve:
+    post:
+      operationId: approveMaterialIndent
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items: { type: array, items: { type: object } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /material-indents/{indentId}/query:
+    post:
+      operationId: queryMaterialIndent
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: indentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remarks: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ─── RFQ ────────────────────────────────────────────────────────────────────
+  /projects/{projectId}/rfqs:
+    get:
+      operationId: listRfqs
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createRfq
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rfqNumber]
+              properties:
+                rfqNumber: { type: string }
+                indentId: { type: string }
+                submissionDeadline: { type: string }
+                deliveryDeadline: { type: string }
+                deliveryLocation: { type: string }
+                paymentTerms: { type: string }
+                notes: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}:
+    get:
+      operationId: getRfq
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}/items:
+    post:
+      operationId: addRfqItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemName]
+              properties:
+                itemName: { type: string }
+                unit: { type: string }
+                requiredQty: { type: number }
+                specification: { type: string }
+                inventoryItemId: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}/vendors:
+    post:
+      operationId: addRfqVendor
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendorId]
+              properties:
+                vendorId: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}/responses:
+    post:
+      operationId: addRfqResponse
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendorId, unitRate]
+              properties:
+                vendorId: { type: string }
+                rfqItemId: { type: string }
+                unitRate: { type: number }
+                gstRate: { type: number }
+                leadTimeDays: { type: integer }
+                deliveryCharges: { type: number }
+                validityDays: { type: integer }
+                remarks: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}/comparison:
+    get:
+      operationId: getRfqComparison
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /rfqs/{rfqId}/award:
+    post:
+      operationId: awardRfq
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: rfqId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendorId]
+              properties:
+                vendorId: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Purchase Orders ──────────────────────────────────────────────────────────
+  /projects/{projectId}/purchase-orders:
+    get:
+      operationId: listPurchaseOrders
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createPurchaseOrder
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [poNumber, vendorId]
+              properties:
+                poNumber: { type: string }
+                vendorId: { type: string }
+                rfqId: { type: string }
+                indentId: { type: string }
+                deliveryLocation: { type: string }
+                deliveryDeadline: { type: string }
+                paymentTerms: { type: string }
+                notes: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /purchase-orders/{poId}:
+    get:
+      operationId: getPurchaseOrder
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: poId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+    patch:
+      operationId: updatePurchaseOrder
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: poId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+                amendmentReason: { type: string }
+                notes: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /purchase-orders/{poId}/items:
+    post:
+      operationId: addPoItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: poId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemName, orderedQty, unitRate]
+              properties:
+                itemName: { type: string }
+                unit: { type: string }
+                orderedQty: { type: number }
+                unitRate: { type: number }
+                gstRate: { type: number }
+                inventoryItemId: { type: string }
+                specification: { type: string }
+                hsnCode: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /purchase-orders/{poId}/approve:
+    post:
+      operationId: approvePurchaseOrder
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: poId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ─── GRN ──────────────────────────────────────────────────────────────────────
+  /projects/{projectId}/grns:
+    get:
+      operationId: listGrns
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: poId, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createGrn
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [grnNumber]
+              properties:
+                grnNumber: { type: string }
+                poId: { type: string }
+                vendorId: { type: string }
+                storeId: { type: string }
+                vehicleNumber: { type: string }
+                dcNumber: { type: string }
+                invoiceNumber: { type: string }
+                invoiceAmount: { type: number }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /grns/{grnId}:
+    get:
+      operationId: getGrn
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: grnId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  /grns/{grnId}/items:
+    post:
+      operationId: addGrnItem
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: grnId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemName, receivedQty]
+              properties:
+                itemName: { type: string }
+                unit: { type: string }
+                receivedQty: { type: number }
+                acceptedQty: { type: number }
+                orderedQty: { type: number }
+                unitRate: { type: number }
+                inventoryItemId: { type: string }
+                poItemId: { type: string }
+                condition: { type: string }
+                qcHold: { type: boolean }
+                batchNumber: { type: string }
+                remarks: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /grns/{grnId}/submit:
+    post:
+      operationId: submitGrn
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: grnId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Material Tests ────────────────────────────────────────────────────────────
+  /projects/{projectId}/material-tests:
+    get:
+      operationId: listMaterialTests
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: result, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createMaterialTest
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [testType]
+              properties:
+                testType: { type: string }
+                grnItemId: { type: string }
+                inventoryItemId: { type: string }
+                isCode: { type: string }
+                sampleDate: { type: string }
+                testDate: { type: string }
+                requiredValue: { type: number }
+                actualValue: { type: number }
+                unit: { type: string }
+                testResult: { type: string }
+                remarks: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /material-tests/{testId}:
+    patch:
+      operationId: updateMaterialTest
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: testId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                testResult: { type: string }
+                actualValue: { type: number }
+                certificateUrl: { type: string }
+                remarks: { type: string }
+                debitNoteIssued: { type: boolean }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Stock Issues ──────────────────────────────────────────────────────────────
+  /projects/{projectId}/stock-issues:
+    get:
+      operationId: listStockIssues
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createStockIssue
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issueNumber]
+              properties:
+                issueNumber: { type: string }
+                indentId: { type: string }
+                storeId: { type: string }
+                issuedToName: { type: string }
+                issuedToContractor: { type: string }
+                wbsActivityId: { type: string }
+                notes: { type: string }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      inventoryItemId: { type: string }
+                      indentItemId: { type: string }
+                      issuedQty: { type: number }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Wastage Logs ──────────────────────────────────────────────────────────────
+  /projects/{projectId}/wastage-logs:
+    get:
+      operationId: listWastageLogs
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createWastageLog
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qty, reasonCode]
+              properties:
+                inventoryItemId: { type: string }
+                storeId: { type: string }
+                qty: { type: number }
+                unit: { type: string }
+                rate: { type: number }
+                reasonCode: { type: string }
+                description: { type: string }
+                normQty: { type: number }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Rate Contracts ────────────────────────────────────────────────────────────
+  /projects/{projectId}/rate-contracts:
+    get:
+      operationId: listRateContracts
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createRateContract
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vendorId, contractNumber, agreedRate, validFrom, validTo, itemName]
+              properties:
+                vendorId: { type: string }
+                contractNumber: { type: string }
+                validFrom: { type: string }
+                validTo: { type: string }
+                inventoryItemId: { type: string }
+                itemName: { type: string }
+                unit: { type: string }
+                agreedRate: { type: number }
+                gstRate: { type: number }
+                maxQty: { type: number }
+                notes: { type: string }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  # ─── Reports ──────────────────────────────────────────────────────────────────
+  /projects/{projectId}/inventory-summary:
+    get:
+      operationId: getInventorySummary
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalItems: { type: integer }
+                  reorderItems: { type: integer }
+                  totalStockValue: { type: number }
+                  totalWastageValue: { type: number }
+                  aboveNormWastage: { type: integer }
+                  totalIssues: { type: integer }
+                  categoryBreakdown: { type: object }
+                  reorderAlerts: { type: array, items: { type: object } }
+
+  /projects/{projectId}/reconciliation:
+    get:
+      operationId: getReconciliation
+      tags: [SupplyChain]
+      parameters:
+        - { in: path, name: projectId, required: true, schema: { type: string } }
+        - { in: query, name: month, schema: { type: string } }
+        - { in: query, name: year, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+
+  # ── Workforce ────────────────────────────────────────────────────────────────
+  /projects/{projectId}/workers:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listWorkers
+      tags: [Workforce]
+      parameters:
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: trade, schema: { type: string } }
+      responses:
+        "200":
+          description: Workers list
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Worker' } } } }
+    post:
+      operationId: createWorker
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/WorkerInput' } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Worker' } } } }
+
+  /workers/{workerId}:
+    parameters:
+      - { in: path, name: workerId, required: true, schema: { type: string } }
+    get:
+      operationId: getWorker
+      tags: [Workforce]
+      responses:
+        "200": { description: Worker detail, content: { application/json: { schema: { type: object } } } }
+    patch:
+      operationId: updateWorker
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/Worker' } } } }
+
+  /projects/{projectId}/attendance:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listAttendance
+      tags: [Workforce]
+      parameters:
+        - { in: query, name: workerId, schema: { type: string } }
+      responses:
+        "200": { description: Attendance records, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: recordAttendance
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/attendance/bulk:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    post:
+      operationId: bulkRecordAttendance
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { entries: { type: array, items: { type: object } } } } } } }
+      responses:
+        "201": { description: Bulk inserted, content: { application/json: { schema: { type: object } } } }
+
+  /attendance/{recordId}/approve-ot:
+    parameters:
+      - { in: path, name: recordId, required: true, schema: { type: string } }
+    patch:
+      operationId: approveOt
+      tags: [Workforce]
+      responses:
+        "200": { description: OT approved, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/payroll-periods:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listPayrollPeriods
+      tags: [Workforce]
+      responses:
+        "200": { description: Payroll periods, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/PayrollPeriod' } } } } }
+    post:
+      operationId: createPayrollPeriod
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/PayrollPeriod' } } } }
+
+  /payroll-periods/{periodId}/compute:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    post:
+      operationId: computePayroll
+      tags: [Workforce]
+      responses:
+        "200": { description: Payroll computed, content: { application/json: { schema: { $ref: '#/components/schemas/PayrollPeriod' } } } }
+
+  /payroll-periods/{periodId}/approve:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    post:
+      operationId: approvePayroll
+      tags: [Workforce]
+      responses:
+        "200": { description: Approved, content: { application/json: { schema: { $ref: '#/components/schemas/PayrollPeriod' } } } }
+
+  /payroll-periods/{periodId}/lines:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    get:
+      operationId: listPayrollLines
+      tags: [Workforce]
+      responses:
+        "200": { description: Payroll lines, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+
+  /payroll-periods/{periodId}/epf-export:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    get:
+      operationId: getEpfExport
+      tags: [Workforce]
+      responses:
+        "200": { description: EPF challan data, content: { application/json: { schema: { type: object } } } }
+
+  /payroll-periods/{periodId}/esi-export:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    get:
+      operationId: getEsiExport
+      tags: [Workforce]
+      responses:
+        "200": { description: ESI challan data, content: { application/json: { schema: { type: object } } } }
+
+  /payroll-periods/{periodId}/statutory-summary:
+    parameters:
+      - { in: path, name: periodId, required: true, schema: { type: string } }
+    get:
+      operationId: getStatutorySummary
+      tags: [Workforce]
+      responses:
+        "200": { description: Statutory summary, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/itps:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listItps
+      tags: [Workforce]
+      responses:
+        "200": { description: ITPs, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createItp
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /itps/{itpId}:
+    parameters:
+      - { in: path, name: itpId, required: true, schema: { type: string } }
+    get:
+      operationId: getItp
+      tags: [Workforce]
+      responses:
+        "200": { description: ITP with items, content: { application/json: { schema: { type: object } } } }
+
+  /itps/{itpId}/approve:
+    parameters:
+      - { in: path, name: itpId, required: true, schema: { type: string } }
+    post:
+      operationId: approveItp
+      tags: [Workforce]
+      responses:
+        "200": { description: Approved, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/inspection-requests:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listInspectionRequests
+      tags: [Workforce]
+      responses:
+        "200": { description: Inspection requests, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createInspectionRequest
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /inspection-requests/{irId}/record:
+    parameters:
+      - { in: path, name: irId, required: true, schema: { type: string } }
+    post:
+      operationId: recordInspectionResult
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "200": { description: Recorded, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/ncrs:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listNcrs
+      tags: [Workforce]
+      responses:
+        "200": { description: NCRs, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createNcr
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /ncrs/{ncrId}/actions:
+    parameters:
+      - { in: path, name: ncrId, required: true, schema: { type: string } }
+    post:
+      operationId: addNcrAction
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/safety-permits:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listSafetyPermits
+      tags: [Workforce]
+      responses:
+        "200": { description: Permits, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createSafetyPermit
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/hira:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listHira
+      tags: [Workforce]
+      responses:
+        "200": { description: HIRA entries, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createHiraEntry
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/jsa:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listJsa
+      tags: [Workforce]
+      responses:
+        "200": { description: JSA entries, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createJsaEntry
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/ppe-issues:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listPpeIssues
+      tags: [Workforce]
+      responses:
+        "200": { description: PPE issues, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createPpeIssue
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/incidents:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listIncidents
+      tags: [Workforce]
+      responses:
+        "200": { description: Incidents, content: { application/json: { schema: { type: array, items: { type: object } } } } }
+    post:
+      operationId: createIncident
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object } } } }
+
+  /projects/{projectId}/safety-dashboard:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: getSafetyDashboard
+      tags: [Workforce]
+      responses:
+        "200": { description: Safety dashboard, content: { application/json: { schema: { $ref: '#/components/schemas/SafetyDashboard' } } } }
+
+  /projects/{projectId}/quality-tests:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listQualityTests
+      tags: [Workforce]
+      parameters:
+        - { in: query, name: testType, schema: { type: string } }
+      responses:
+        "200": { description: Quality tests, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/QualityTest' } } } } }
+    post:
+      operationId: createQualityTest
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/QualityTest' } } } }
+
+  /projects/{projectId}/labour-contractor-bills:
+    parameters:
+      - { $ref: '#/components/parameters/ProjectIdParam' }
+    get:
+      operationId: listLabourContractorBills
+      tags: [Workforce]
+      responses:
+        "200": { description: Labour contractor bills, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/LabourContractorBill' } } } } }
+    post:
+      operationId: createLabourContractorBill
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/LabourContractorBill' } } } }
+
+  /labour-contractor-bills/{billId}:
+    parameters:
+      - { in: path, name: billId, required: true, schema: { type: string } }
+    get:
+      operationId: getLabourContractorBill
+      tags: [Workforce]
+      responses:
+        "200": { description: Bill with cross-verification, content: { application/json: { schema: { type: object } } } }
+    patch:
+      operationId: updateLabourContractorBill
+      tags: [Workforce]
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/LabourContractorBill' } } } }
+
+components:
+  parameters:
+    AuthorizationSessionHeader:
+      name: Authorization
+      in: header
+      required: false
+      schema: { type: string }
+    SessionCookie:
+      name: sid
+      in: cookie
+      required: false
+      schema: { type: string }
+    ProjectIdParam:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string }
+    OrganisationIdParam:
+      name: organisationId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+
+    AuthUser:
+      type: object
+      required: [id, email, firstName, lastName, profileImageUrl]
+      properties:
+        id: { type: string }
+        email: { type: [string, 'null'], format: email }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        profileImageUrl: { type: [string, 'null'] }
+    AuthUserEnvelope:
+      type: object
+      required: [user]
+      properties:
+        user:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+    RegisterRequest:
+      type: object
+      required: [email, password, orgName]
+      properties:
+        email: { type: string, format: email, minLength: 3 }
+        password: { type: string, minLength: 8 }
+        firstName: { type: string }
+        lastName: { type: string }
+        orgName: { type: string, minLength: 1 }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1 }
+    LogoutSuccess:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, const: true }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 1 }
+        contentType: { type: string, minLength: 1 }
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+        metadata: { $ref: '#/components/schemas/UploadUrlRequest' }
+
+    UserRole:
+      type: string
+      enum: [owner, pm, site_engineer, qs, finance, contractor, qc, store, hr, admin]
+    ProjectStatus:
+      type: string
+      enum: [not_started, on_track, at_risk, delayed, on_hold, completed]
+    ActivityStatus:
+      type: string
+      enum: [not_started, on_track, at_risk, delayed, on_hold, completed]
+    MilestoneStatus:
+      type: string
+      enum: [pending, on_track, at_risk, delayed, completed]
+    DprStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected]
+    IssueSeverity:
+      type: string
+      enum: [low, medium, high, critical]
+
+    MyProfile:
+      type: object
+      required: [userId, role, firstName, lastName, email, profileImageUrl, organisationId, organisationName, phone, designation]
+      properties:
+        userId: { type: string }
+        role: { $ref: '#/components/schemas/UserRole' }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+        profileImageUrl: { type: [string, 'null'] }
+        organisationId: { type: [string, 'null'] }
+        organisationName: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        designation: { type: [string, 'null'] }
+    MyProfileUpdate:
+      type: object
+      properties:
+        role: { $ref: '#/components/schemas/UserRole' }
+        organisationId: { type: string }
+        phone: { type: string }
+        designation: { type: string }
+
+    Organisation:
+      type: object
+      required: [id, name, legalName, gstin, pan, address, city, state, pincode, logoUrl, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        legalName: { type: [string, 'null'] }
+        gstin: { type: [string, 'null'] }
+        pan: { type: [string, 'null'] }
+        address: { type: [string, 'null'] }
+        city: { type: [string, 'null'] }
+        state: { type: [string, 'null'] }
+        pincode: { type: [string, 'null'] }
+        logoUrl: { type: [string, 'null'] }
+        enabledModules:
+          type: [array, 'null']
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+    OrganisationInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        legalName: { type: string }
+        gstin: { type: string }
+        pan: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string }
+        logoUrl: { type: string }
+    OrganisationUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        legalName: { type: string }
+        gstin: { type: string }
+        pan: { type: string }
+        address: { type: string }
+        city: { type: string }
+        state: { type: string }
+        pincode: { type: string }
+        logoUrl: { type: string }
+    OrganisationUser:
+      type: object
+      required: [userId, role, firstName, lastName, email]
+      properties:
+        userId: { type: string }
+        role: { type: string }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+    ProjectAccessEntry:
+      type: object
+      required: [id, userId, firstName, lastName, email, role, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        projectId: { type: string }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        email: { type: [string, 'null'] }
+        role: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    ReverseGeocodeRequest:
+      type: object
+      required: [lat, lon]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lon: { type: number, minimum: -180, maximum: 180 }
+    ReverseGeocodeResponse:
+      type: object
+      required: [address]
+      properties:
+        address: { type: [string, 'null'] }
+
+    Project:
+      type: object
+      required: [id, organisationId, code, name, clientName, description, location, latitude, longitude, reraNumber, contractValue, startDate, targetEndDate, forecastEndDate, status, plannedPercent, actualPercent, costToDate, budgetToDate, cpi, spi, pmId, coverImageUrl, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        organisationId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        clientName: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        location: { type: [string, 'null'] }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        reraNumber: { type: [string, 'null'] }
+        contractValue: { type: number }
+        startDate: { type: [string, 'null'], format: date-time }
+        targetEndDate: { type: [string, 'null'], format: date-time }
+        forecastEndDate: { type: [string, 'null'], format: date-time }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        plannedPercent: { type: number }
+        actualPercent: { type: number }
+        costToDate: { type: number }
+        budgetToDate: { type: number }
+        cpi: { type: number }
+        spi: { type: number }
+        pmId: { type: [string, 'null'] }
+        coverImageUrl: { type: [string, 'null'] }
+        enabledModulesOverride:
+          type: [array, 'null']
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ProjectInput:
+      type: object
+      required: [organisationId, code, name]
+      properties:
+        organisationId: { type: string }
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        clientName: { type: string }
+        description: { type: string }
+        location: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        reraNumber: { type: string }
+        contractValue: { type: number }
+        startDate: { type: string, format: date-time }
+        targetEndDate: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        pmId: { type: string }
+        coverImageUrl: { type: string }
+    ProjectUpdate:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        clientName: { type: string }
+        description: { type: string }
+        location: { type: string }
+        latitude: { type: number }
+        longitude: { type: number }
+        reraNumber: { type: string }
+        contractValue: { type: number }
+        startDate: { type: string, format: date-time }
+        targetEndDate: { type: string, format: date-time }
+        forecastEndDate: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        pmId: { type: string }
+        coverImageUrl: { type: string }
+
+    WbsActivity:
+      type: object
+      required: [id, projectId, parentId, code, name, unit, plannedQuantity, actualQuantity, plannedStart, plannedEnd, actualStart, actualEnd, plannedPercent, actualPercent, plannedCost, actualCost, status, weight, sortOrder, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        parentId: { type: [string, 'null'] }
+        code: { type: string }
+        name: { type: string }
+        unit: { type: [string, 'null'] }
+        plannedQuantity: { type: number }
+        actualQuantity: { type: number }
+        plannedStart: { type: [string, 'null'], format: date-time }
+        plannedEnd: { type: [string, 'null'], format: date-time }
+        actualStart: { type: [string, 'null'], format: date-time }
+        actualEnd: { type: [string, 'null'], format: date-time }
+        plannedPercent: { type: number }
+        actualPercent: { type: number }
+        plannedCost: { type: number }
+        actualCost: { type: number }
+        status: { $ref: '#/components/schemas/ActivityStatus' }
+        weight: { type: number }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+    WbsActivityInput:
+      type: object
+      required: [code, name]
+      properties:
+        parentId: { type: string }
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        unit: { type: string }
+        plannedQuantity: { type: number }
+        plannedStart: { type: string, format: date-time }
+        plannedEnd: { type: string, format: date-time }
+        plannedPercent: { type: number }
+        plannedCost: { type: number }
+        weight: { type: number }
+        sortOrder: { type: integer }
+    WbsActivityUpdate:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        unit: { type: string }
+        plannedQuantity: { type: number }
+        actualQuantity: { type: number }
+        plannedStart: { type: string, format: date-time }
+        plannedEnd: { type: string, format: date-time }
+        actualStart: { type: string, format: date-time }
+        actualEnd: { type: string, format: date-time }
+        plannedPercent: { type: number }
+        actualPercent: { type: number }
+        plannedCost: { type: number }
+        actualCost: { type: number }
+        status: { $ref: '#/components/schemas/ActivityStatus' }
+        weight: { type: number }
+        sortOrder: { type: integer }
+
+    Milestone:
+      type: object
+      required: [id, projectId, name, description, targetDate, forecastDate, actualDate, status, certificateIssued, sortOrder, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        targetDate: { type: string, format: date-time }
+        forecastDate: { type: [string, 'null'], format: date-time }
+        actualDate: { type: [string, 'null'], format: date-time }
+        status: { $ref: '#/components/schemas/MilestoneStatus' }
+        certificateIssued: { type: boolean }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+    MilestoneInput:
+      type: object
+      required: [name, targetDate]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        targetDate: { type: string, format: date-time }
+        forecastDate: { type: string, format: date-time }
+        sortOrder: { type: integer }
+    MilestoneUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        targetDate: { type: string, format: date-time }
+        forecastDate: { type: string, format: date-time }
+        actualDate: { type: string, format: date-time }
+        status: { $ref: '#/components/schemas/MilestoneStatus' }
+        certificateIssued: { type: boolean }
+        sortOrder: { type: integer }
+
+    Dpr:
+      type: object
+      required: [id, projectId, reportDate, weather, temperature, manpowerCount, summary, status, submittedById, approvedById, submittedAt, approvedAt, rejectionReason, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        reportDate: { type: string, format: date-time }
+        weather: { type: [string, 'null'] }
+        temperature: { type: [number, 'null'] }
+        manpowerCount: { type: integer }
+        summary: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/DprStatus' }
+        submittedById: { type: [string, 'null'] }
+        approvedById: { type: [string, 'null'] }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        rejectionReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    DprInput:
+      type: object
+      required: [reportDate]
+      properties:
+        reportDate: { type: string, format: date-time }
+        weather: { type: string }
+        temperature: { type: number }
+        manpowerCount: { type: integer }
+        summary: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DprItemInput' }
+    DprApprovalInput:
+      type: object
+      properties:
+        approve: { type: boolean }
+        rejectionReason: { type: string }
+    DprItemInput:
+      type: object
+      required: [activityId, quantityToday]
+      properties:
+        activityId: { type: string }
+        quantityToday: { type: number }
+        remarks: { type: string }
+    DprItem:
+      type: object
+      required: [id, dprId, activityId, activityName, quantityToday, cumulativeQuantity, remarks]
+      properties:
+        id: { type: string }
+        dprId: { type: string }
+        activityId: { type: string }
+        activityName: { type: string }
+        quantityToday: { type: number }
+        cumulativeQuantity: { type: number }
+        remarks: { type: [string, 'null'] }
+    DprDetail:
+      type: object
+      required: [dpr, items, photos, submittedBy, approvedBy]
+      properties:
+        dpr: { $ref: '#/components/schemas/Dpr' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DprItem' }
+        photos:
+          type: array
+          items: { $ref: '#/components/schemas/SitePhoto' }
+        submittedBy:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+        approvedBy:
+          oneOf:
+            - $ref: '#/components/schemas/AuthUser'
+            - type: 'null'
+
+    SitePhoto:
+      type: object
+      required: [id, projectId, activityId, dprId, url, caption, capturedAt, latitude, longitude, uploadedById, tag, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        activityId: { type: [string, 'null'] }
+        dprId: { type: [string, 'null'] }
+        url: { type: string }
+        caption: { type: [string, 'null'] }
+        capturedAt: { type: string, format: date-time }
+        latitude: { type: [number, 'null'] }
+        longitude: { type: [number, 'null'] }
+        uploadedById: { type: [string, 'null'] }
+        tag: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    SitePhotoInput:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, minLength: 1 }
+        activityId: { type: string }
+        dprId: { type: string }
+        caption: { type: string }
+        capturedAt: { type: string, format: date-time }
+        latitude: { type: number }
+        longitude: { type: number }
+        tag: { type: string }
+
+    Document:
+      type: object
+      required: [id, projectId, name, category, url, version, uploadedById, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        category: { type: [string, 'null'] }
+        url: { type: string }
+        version: { type: integer }
+        uploadedById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    DocumentInput:
+      type: object
+      required: [name, url]
+      properties:
+        name: { type: string, minLength: 1 }
+        category: { type: string }
+        url: { type: string, minLength: 1 }
+        version: { type: integer }
+
+    Issue:
+      type: object
+      required: [id, projectId, dprId, title, description, severity, status, raisedById, assignedToId, raisedAt, resolvedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        dprId: { type: [string, 'null'] }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        severity: { $ref: '#/components/schemas/IssueSeverity' }
+        status: { type: string }
+        raisedById: { type: [string, 'null'] }
+        assignedToId: { type: [string, 'null'] }
+        raisedAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+    IssueInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        severity: { $ref: '#/components/schemas/IssueSeverity' }
+        dprId: { type: string }
+        assignedToId: { type: string }
+    IssueUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        severity: { $ref: '#/components/schemas/IssueSeverity' }
+        status: { type: string }
+        assignedToId: { type: string }
+
+    ApprovalItem:
+      type: object
+      required: [id, projectId, projectName, entityType, entityId, title, requestedById, requestedByName, assignedToRole, status, createdAt, resolvedAt, ageDays]
+      properties:
+        id: { type: string }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        entityType: { type: string }
+        entityId: { type: string }
+        title: { type: string }
+        requestedById: { type: [string, 'null'] }
+        requestedByName: { type: [string, 'null'] }
+        assignedToRole: { $ref: '#/components/schemas/UserRole' }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        ageDays: { type: integer }
+    ApprovalResolutionInput:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        comment: { type: string }
+
+    EstimateLevel:
+      type: string
+      enum: [L0, L1, L2, L3, L4, L5]
+    EstimateStatus:
+      type: string
+      enum: [draft, submitted, approved, locked]
+
+    Estimate:
+      type: object
+      required: [id, projectId, level, name, status, totalAmount, notes, metadata, createdById, approvedById, approvedAt, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        level: { $ref: '#/components/schemas/EstimateLevel' }
+        name: { type: string }
+        status: { $ref: '#/components/schemas/EstimateStatus' }
+        totalAmount: { type: number }
+        notes: { type: [string, 'null'] }
+        metadata: {}
+        createdById: { type: [string, 'null'] }
+        approvedById: { type: [string, 'null'] }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EstimateInput:
+      type: object
+      required: [level, name]
+      properties:
+        level: { $ref: '#/components/schemas/EstimateLevel' }
+        name: { type: string, minLength: 1 }
+        notes: { type: string }
+        totalAmount: { type: number }
+        metadata: {}
+        skipDefaultHeads: { type: boolean }
+    EstimateUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        notes: { type: string }
+        status: { $ref: '#/components/schemas/EstimateStatus' }
+        totalAmount: { type: number }
+        metadata: {}
+
+    EstimateCostHead:
+      type: object
+      required: [id, estimateId, headCode, headName, percentage, amount, sortOrder]
+      properties:
+        id: { type: string }
+        estimateId: { type: string }
+        headCode: { type: string }
+        headName: { type: string }
+        percentage: { type: number }
+        amount: { type: number }
+        sortOrder: { type: integer }
+    EstimateCostHeadInput:
+      type: object
+      required: [headCode, headName, percentage, amount]
+      properties:
+        headCode: { type: string }
+        headName: { type: string }
+        percentage: { type: number }
+        amount: { type: number }
+
+    BoqItem:
+      type: object
+      required: [id, estimateId, projectId, wbsActivityId, dsrRateId, levelType, trade, itemCode, description, unit, quantity, rate, amount, actualQuantity, actualAmount, hsnCode, gstRate, locked, sortOrder, createdAt]
+      properties:
+        id: { type: string }
+        estimateId: { type: string }
+        projectId: { type: string }
+        wbsActivityId: { type: [string, 'null'] }
+        dsrRateId: { type: [string, 'null'] }
+        levelType: { type: string }
+        trade: { type: string }
+        itemCode: { type: [string, 'null'] }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        rate: { type: number }
+        amount: { type: number }
+        actualQuantity: { type: number }
+        actualAmount: { type: number }
+        hsnCode: { type: [string, 'null'] }
+        gstRate: { type: number }
+        locked: { type: boolean }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+    BoqItemInput:
+      type: object
+      required: [description, unit, trade]
+      properties:
+        trade: { type: string }
+        description: { type: string, minLength: 1 }
+        unit: { type: string }
+        itemCode: { type: string }
+        levelType: { type: string }
+        quantity: { type: number }
+        rate: { type: number }
+        dsrRateId: { type: string }
+        wbsActivityId: { type: string }
+        hsnCode: { type: string }
+        gstRate: { type: number }
+    BoqItemUpdate:
+      type: object
+      properties:
+        description: { type: string }
+        trade: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        rate: { type: number }
+        actualQuantity: { type: number }
+        actualAmount: { type: number }
+        hsnCode: { type: string }
+        gstRate: { type: number }
+        locked: { type: boolean }
+
+    RateAnalysisComponent:
+      type: object
+      required: [id, boqItemId, componentType, description, unit, quantity, marketRate, dsrRate, amount, sortOrder]
+      properties:
+        id: { type: string }
+        boqItemId: { type: string }
+        componentType: { type: string }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        marketRate: { type: number }
+        dsrRate: { type: number }
+        amount: { type: number }
+        sortOrder: { type: integer }
+    RateAnalysisComponentInput:
+      type: object
+      required: [componentType, description, unit, quantity, marketRate]
+      properties:
+        componentType: { type: string, enum: [material, labour, plant, overhead] }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        marketRate: { type: number }
+        dsrRate: { type: number }
+
+    BoqVsActualItem:
+      type: object
+      required: [id, estimateId, projectId, trade, description, unit, quantity, rate, amount, actualQuantity, actualAmount, actualRate, variancePct, alert]
+      properties:
+        id: { type: string }
+        estimateId: { type: string }
+        projectId: { type: string }
+        trade: { type: string }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        rate: { type: number }
+        amount: { type: number }
+        actualQuantity: { type: number }
+        actualAmount: { type: number }
+        actualRate: { type: number }
+        variancePct: { type: number }
+        alert: { type: string, enum: [green, amber, red] }
+        gstRate: { type: number }
+        hsnCode: { type: [string, 'null'] }
+        locked: { type: boolean }
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
+        wbsActivityId: { type: [string, 'null'] }
+        dsrRateId: { type: [string, 'null'] }
+        itemCode: { type: [string, 'null'] }
+        levelType: { type: string }
+    BoqVsActualResult:
+      type: object
+      required: [items, counts]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/BoqVsActualItem' }
+        counts:
+          type: object
+          required: [green, amber, red]
+          properties:
+            green: { type: integer }
+            amber: { type: integer }
+            red: { type: integer }
+
+    DsrRate:
+      type: object
+      required: [id, code, description, trade, unit, state, cityTier, rate, effectiveYear, source, createdById, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        description: { type: string }
+        trade: { type: string }
+        unit: { type: string }
+        state: { type: string }
+        cityTier: { type: string }
+        rate: { type: number }
+        effectiveYear: { type: integer }
+        source: { type: string }
+        createdById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    DsrRateInput:
+      type: object
+      required: [code, description, trade, unit, state, rate]
+      properties:
+        code: { type: string }
+        description: { type: string }
+        trade: { type: string }
+        unit: { type: string }
+        state: { type: string }
+        cityTier: { type: string }
+        rate: { type: number }
+        effectiveYear: { type: integer }
+        source: { type: string }
+    DsrRateUpdate:
+      type: object
+      properties:
+        description: { type: string }
+        trade: { type: string }
+        unit: { type: string }
+        state: { type: string }
+        cityTier: { type: string }
+        rate: { type: number }
+        effectiveYear: { type: integer }
+        source: { type: string }
+
+    RateSource:
+      type: object
+      required: [id, label, type, enabled, defaultSource, lastSyncStatus, lastSyncRowsInserted, lastSyncRowsUpdated, lastSyncRowsSkipped, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        label: { type: string }
+        type: { type: string, enum: [csv, json, gsheet, escalation] }
+        url: { type: [string, 'null'] }
+        defaultState: { type: [string, 'null'] }
+        defaultSource: { type: string }
+        defaultEffectiveYear: { type: [integer, 'null'] }
+        enabled: { type: boolean }
+        escalationPct: { type: [number, 'null'] }
+        escalationFilterTrade: { type: [string, 'null'] }
+        escalationFilterState: { type: [string, 'null'] }
+        escalationFromYear: { type: [integer, 'null'] }
+        escalationToYear: { type: [integer, 'null'] }
+        lastSyncAt: { type: [string, 'null'], format: date-time }
+        lastSyncStatus: { type: string, enum: [never, success, partial, error] }
+        lastSyncRowsInserted: { type: integer }
+        lastSyncRowsUpdated: { type: integer }
+        lastSyncRowsSkipped: { type: integer }
+        lastSyncError: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RateSourceInput:
+      type: object
+      required: [label, type]
+      properties:
+        label: { type: string, minLength: 1 }
+        type: { type: string, enum: [csv, json, gsheet, escalation] }
+        url: { type: string }
+        defaultState: { type: string }
+        defaultSource: { type: string }
+        defaultEffectiveYear: { type: integer }
+        enabled: { type: boolean }
+        escalationPct: { type: number }
+        escalationFilterTrade: { type: string }
+        escalationFilterState: { type: string }
+        escalationFromYear: { type: integer }
+        escalationToYear: { type: integer }
+    RateSourceUpdate:
+      type: object
+      properties:
+        label: { type: string }
+        type: { type: string, enum: [csv, json, gsheet, escalation] }
+        url: { type: string }
+        defaultState: { type: string }
+        defaultSource: { type: string }
+        defaultEffectiveYear: { type: integer }
+        enabled: { type: boolean }
+        escalationPct: { type: number }
+        escalationFilterTrade: { type: string }
+        escalationFilterState: { type: string }
+        escalationFromYear: { type: integer }
+        escalationToYear: { type: integer }
+    RateSyncResult:
+      type: object
+      required: [inserted, updated, skipped, errors]
+      properties:
+        sourceId: { type: string }
+        inserted: { type: integer }
+        updated: { type: integer }
+        skipped: { type: integer }
+        errors:
+          type: array
+          items: { type: string }
+    BulkRateUpsertInput:
+      type: object
+      required: [rows]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        defaultState: { type: string }
+        defaultSource: { type: string }
+        defaultEffectiveYear: { type: integer }
+    EscalationInput:
+      type: object
+      required: [pct]
+      properties:
+        pct: { type: number }
+        trade: { type: string }
+        state: { type: string }
+        fromYear: { type: integer }
+        toYear: { type: integer }
+
+    VariationOrder:
+      type: object
+      required: [id, projectId, estimateId, voNumber, title, description, scopeChange, costImpact, programmeImpactDays, status, raisedById, approvedById, createdAt, approvedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        estimateId: { type: [string, 'null'] }
+        voNumber: { type: string }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        scopeChange: { type: [string, 'null'] }
+        costImpact: { type: number }
+        programmeImpactDays: { type: integer }
+        status: { type: string }
+        raisedById: { type: [string, 'null'] }
+        approvedById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        approvedAt: { type: [string, 'null'], format: date-time }
+    VariationOrderInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        scopeChange: { type: string }
+        costImpact: { type: number }
+        programmeImpactDays: { type: integer }
+        estimateId: { type: string }
+    VariationOrderUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        scopeChange: { type: string }
+        costImpact: { type: number }
+        programmeImpactDays: { type: integer }
+        status: { type: string }
+        estimateId: { type: string }
+
+    WorkOrderEstimate:
+      type: object
+      required: [id, projectId, l3EstimateId, subcontractor, workPackage, status, totalBoqAmount, totalNegotiatedAmount, notes, createdById, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        l3EstimateId: { type: [string, 'null'] }
+        subcontractor: { type: string }
+        workPackage: { type: string }
+        status: { type: string }
+        totalBoqAmount: { type: number }
+        totalNegotiatedAmount: { type: number }
+        notes: { type: [string, 'null'] }
+        createdById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    WorkOrderInput:
+      type: object
+      required: [subcontractor, workPackage]
+      properties:
+        subcontractor: { type: string, minLength: 1 }
+        workPackage: { type: string, minLength: 1 }
+        l3EstimateId: { type: string }
+        notes: { type: string }
+    WorkOrderUpdate:
+      type: object
+      properties:
+        subcontractor: { type: string }
+        workPackage: { type: string }
+        status: { type: string }
+        notes: { type: string }
+        l3EstimateId: { type: string }
+    WorkOrderEstimateItem:
+      type: object
+      required: [id, workOrderEstimateId, boqItemId, description, unit, quantity, boqRate, negotiatedRate, negotiatedAmount, sortOrder]
+      properties:
+        id: { type: string }
+        workOrderEstimateId: { type: string }
+        boqItemId: { type: [string, 'null'] }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        boqRate: { type: number }
+        negotiatedRate: { type: number }
+        negotiatedAmount: { type: number }
+        sortOrder: { type: integer }
+    WorkOrderItemInput:
+      type: object
+      required: [description, unit, quantity, boqRate, negotiatedRate]
+      properties:
+        boqItemId: { type: string }
+        description: { type: string }
+        unit: { type: string }
+        quantity: { type: number }
+        boqRate: { type: number }
+        negotiatedRate: { type: number }
+
+    PortfolioKpi:
+      type: object
+      required: [totalProjects, onTrack, atRisk, delayed, completed, pendingApprovals, totalContractValue, totalCostToDate, totalBudgetToDate, weightedCpi]
+      properties:
+        totalProjects: { type: integer }
+        onTrack: { type: integer }
+        atRisk: { type: integer }
+        delayed: { type: integer }
+        completed: { type: integer }
+        pendingApprovals: { type: integer }
+        totalContractValue: { type: number }
+        totalCostToDate: { type: number }
+        totalBudgetToDate: { type: number }
+        weightedCpi: { type: number }
+    PortfolioDashboard:
+      type: object
+      required: [kpi, projects]
+      properties:
+        kpi: { $ref: '#/components/schemas/PortfolioKpi' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/Project' }
+
+    SafetyTrendsDashboard:
+      type: object
+      required: [jsaMonth, qcLast30, weeklyPassRate, perProject]
+      properties:
+        jsaMonth:
+          type: object
+          required: [approved, draft, draftOverdue24h, monthStart]
+          properties:
+            approved: { type: integer }
+            draft: { type: integer }
+            draftOverdue24h: { type: integer }
+            monthStart: { type: string, format: date-time }
+        qcLast30:
+          type: object
+          required: [pass, fail, total, passRate]
+          properties:
+            pass: { type: integer }
+            fail: { type: integer }
+            total: { type: integer }
+            passRate: { type: number }
+        weeklyPassRate:
+          type: array
+          items:
+            type: object
+            required: [weekStart, pass, total, rate]
+            properties:
+              weekStart: { type: string, format: date-time }
+              pass: { type: integer }
+              total: { type: integer }
+              rate: { type: number }
+        perProject:
+          type: array
+          items:
+            type: object
+            required: [projectId, projectName, draftOverdue, passRate30, totalTests30]
+            properties:
+              projectId: { type: string }
+              projectName: { type: string }
+              draftOverdue: { type: integer }
+              passRate30: { type: number }
+              totalTests30: { type: integer }
+    ActivityFeedItem:
+      type: object
+      required: [id, kind, projectId, projectName, title, actorName, occurredAt]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        title: { type: string }
+        actorName: { type: [string, 'null'] }
+        occurredAt: { type: string, format: date-time }
+
+    ProjectHealthRing:
+      type: object
+      required: [plannedPercent, actualPercent, variancePercent, status]
+      properties:
+        plannedPercent: { type: number }
+        actualPercent: { type: number }
+        variancePercent: { type: number }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+    CostHealth:
+      type: object
+      required: [budgetToDate, costToDate, contractValue, cpi, overrunPercent]
+      properties:
+        budgetToDate: { type: number }
+        costToDate: { type: number }
+        contractValue: { type: number }
+        cpi: { type: number }
+        overrunPercent: { type: number }
+    GanttSegment:
+      type: object
+      required: [activityId, code, name, plannedStart, plannedEnd, actualStart, actualEnd, plannedPercent, actualPercent, status]
+      properties:
+        activityId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        plannedStart: { type: [string, 'null'], format: date-time }
+        plannedEnd: { type: [string, 'null'], format: date-time }
+        actualStart: { type: [string, 'null'], format: date-time }
+        actualEnd: { type: [string, 'null'], format: date-time }
+        plannedPercent: { type: number }
+        actualPercent: { type: number }
+        status: { $ref: '#/components/schemas/ActivityStatus' }
+    PendingActionItem:
+      type: object
+      required: [id, kind, title, ageDays, severity]
+      properties:
+        id: { type: string }
+        kind: { type: string }
+        title: { type: string }
+        ageDays: { type: integer }
+        severity: { type: string }
+    ProjectDashboard:
+      type: object
+      required: [project, health, cost, miniGantt, activityStatusCounts, recentPhotos, pendingActions, nextMilestone]
+      properties:
+        project: { $ref: '#/components/schemas/Project' }
+        health: { $ref: '#/components/schemas/ProjectHealthRing' }
+        cost: { $ref: '#/components/schemas/CostHealth' }
+        miniGantt:
+          type: array
+          items: { $ref: '#/components/schemas/GanttSegment' }
+        activityStatusCounts:
+          type: object
+          required: [not_started, on_track, at_risk, delayed, on_hold, completed]
+          properties:
+            not_started: { type: integer }
+            on_track: { type: integer }
+            at_risk: { type: integer }
+            delayed: { type: integer }
+            on_hold: { type: integer }
+            completed: { type: integer }
+        recentPhotos:
+          type: array
+          items: { $ref: '#/components/schemas/SitePhoto' }
+        pendingActions:
+          type: array
+          items: { $ref: '#/components/schemas/PendingActionItem' }
+        nextMilestone:
+          oneOf:
+            - $ref: '#/components/schemas/Milestone'
+            - type: 'null'
+
+    # ── Financial Schemas ──────────────────────────────────────────────────────
+    ContractorBill:
+      type: object
+      required: [id, projectId, billNumber, billDate, grossAmount, totalDeductions, gstAmount, netPayable, status, stepLabel, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        workOrderId: { type: [string, 'null'] }
+        billNumber: { type: string }
+        billDate: { type: string, format: date-time }
+        periodFrom: { type: [string, 'null'], format: date-time }
+        periodTo: { type: [string, 'null'], format: date-time }
+        grossAmount: { type: number }
+        totalDeductions: { type: number }
+        gstAmount: { type: number }
+        netPayable: { type: number }
+        status: { type: string }
+        stepLabel: { type: string }
+        invoiceUrl: { type: [string, 'null'] }
+        measurementUrl: { type: [string, 'null'] }
+        irnNumber: { type: [string, 'null'] }
+        remarks: { type: [string, 'null'] }
+        technicalRemarks: { type: [string, 'null'] }
+        qsRemarks: { type: [string, 'null'] }
+        pmRemarks: { type: [string, 'null'] }
+        submittedById: { type: [string, 'null'] }
+        technicalCheckedById: { type: [string, 'null'] }
+        qsScrutinizedById: { type: [string, 'null'] }
+        pmCertifiedById: { type: [string, 'null'] }
+        financeApprovedById: { type: [string, 'null'] }
+        utr: { type: [string, 'null'] }
+        paymentMode: { type: [string, 'null'] }
+        paidAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        technicalCheckedAt: { type: [string, 'null'], format: date-time }
+        qsScrutinizedAt: { type: [string, 'null'], format: date-time }
+        pmCertifiedAt: { type: [string, 'null'], format: date-time }
+        financeApprovedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    BillDeduction:
+      type: object
+      required: [id, billId, deductionType, description, rate, baseAmount, amount, createdAt]
+      properties:
+        id: { type: string }
+        billId: { type: string }
+        deductionType: { type: string }
+        description: { type: string }
+        rate: { type: number }
+        baseAmount: { type: number }
+        amount: { type: number }
+        legalRef: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    PaymentVoucher:
+      type: object
+      required: [id, billId, projectId, voucherNumber, amount, mode, createdAt]
+      properties:
+        id: { type: string }
+        billId: { type: string }
+        projectId: { type: string }
+        voucherNumber: { type: string }
+        amount: { type: number }
+        mode: { type: string }
+        bankName: { type: [string, 'null'] }
+        accountNumber: { type: [string, 'null'] }
+        ifscCode: { type: [string, 'null'] }
+        utr: { type: [string, 'null'] }
+        paidAt: { type: [string, 'null'], format: date-time }
+        releasedById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    LedgerAccount:
+      type: object
+      required: [id, accountCode, accountName, accountType, openingBalance, currentBalance, isActive, createdAt]
+      properties:
+        id: { type: string }
+        organisationId: { type: [string, 'null'] }
+        projectId: { type: [string, 'null'] }
+        accountCode: { type: string }
+        accountName: { type: string }
+        accountType: { type: string }
+        parentAccountId: { type: [string, 'null'] }
+        openingBalance: { type: number }
+        currentBalance: { type: number }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    LedgerEntry:
+      type: object
+      required: [id, projectId, entryNumber, entryDate, narration, amount, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entryNumber: { type: string }
+        entryDate: { type: string, format: date-time }
+        entityType: { type: [string, 'null'] }
+        entityId: { type: [string, 'null'] }
+        narration: { type: string }
+        debitAccountId: { type: [string, 'null'] }
+        creditAccountId: { type: [string, 'null'] }
+        amount: { type: number }
+        createdById: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    ClientInvoice:
+      type: object
+      required: [id, projectId, invoiceNumber, clientName, invoiceDate, grossAmount, cgstRate, sgstRate, igstRate, gstAmount, netAmount, retentionHeld, amountReceived, status, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        invoiceNumber: { type: string }
+        clientName: { type: string }
+        invoiceDate: { type: string, format: date-time }
+        dueDate: { type: [string, 'null'], format: date-time }
+        milestoneId: { type: [string, 'null'] }
+        grossAmount: { type: number }
+        cgstRate: { type: number }
+        sgstRate: { type: number }
+        igstRate: { type: number }
+        gstAmount: { type: number }
+        netAmount: { type: number }
+        retentionHeld: { type: number }
+        amountReceived: { type: number }
+        status: { type: string }
+        irnNumber: { type: [string, 'null'] }
+        reraReference: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        paidAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    GstEntry:
+      type: object
+      required: [id, projectId, entityType, entityId, invoiceNumber, invoiceDate, partyName, taxableValue, cgstRate, cgstAmount, sgstRate, sgstAmount, igstRate, igstAmount, totalGst, entryType, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entityType: { type: string }
+        entityId: { type: string }
+        invoiceNumber: { type: string }
+        invoiceDate: { type: string, format: date-time }
+        partyGstin: { type: [string, 'null'] }
+        partyName: { type: string }
+        taxableValue: { type: number }
+        cgstRate: { type: number }
+        cgstAmount: { type: number }
+        sgstRate: { type: number }
+        sgstAmount: { type: number }
+        igstRate: { type: number }
+        igstAmount: { type: number }
+        totalGst: { type: number }
+        hsnCode: { type: [string, 'null'] }
+        entryType: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    TdsEntry:
+      type: object
+      required: [id, projectId, vendorName, sectionCode, grossAmount, tdsRate, tdsAmount, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        billId: { type: [string, 'null'] }
+        vendorName: { type: string }
+        pan: { type: [string, 'null'] }
+        sectionCode: { type: string }
+        grossAmount: { type: number }
+        tdsRate: { type: number }
+        tdsAmount: { type: number }
+        depositedAt: { type: [string, 'null'], format: date-time }
+        challanNumber: { type: [string, 'null'] }
+        quarter: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    RetentionLedgerEntry:
+      type: object
+      required: [id, projectId, transactionType, retentionHeld, retentionReleased, balance, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        workOrderId: { type: [string, 'null'] }
+        billId: { type: [string, 'null'] }
+        transactionType: { type: string }
+        retentionHeld: { type: number }
+        retentionReleased: { type: number }
+        balance: { type: number }
+        remarks: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    AdvanceLedgerEntry:
+      type: object
+      required: [id, projectId, transactionType, amount, balance, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        workOrderId: { type: [string, 'null'] }
+        billId: { type: [string, 'null'] }
+        transactionType: { type: string }
+        amount: { type: number }
+        balance: { type: number }
+        remarks: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+
+    PaymentAnalytics:
+      type: object
+      required: [received, underProcess, overdueUnpaid, paidThisMonth, tdsYtd, aging, trend]
+      properties:
+        received: { type: integer }
+        underProcess: { type: integer }
+        overdueUnpaid: { type: integer }
+        paidThisMonth: { type: number }
+        tdsYtd: { type: number }
+        aging:
+          type: object
+          required: [_0_30, _31_60, _61_90, _over90]
+          properties:
+            _0_30: { type: integer }
+            _31_60: { type: integer }
+            _61_90: { type: integer }
+            _over90: { type: integer }
+        trend:
+          type: array
+          items:
+            type: object
+            required: [month, paid]
+            properties:
+              month: { type: string }
+              paid: { type: number }
+
+    FinancialSummary:
+      type: object
+      required: [contractValue, totalBilled, totalPaid, totalDeducted, totalGstOnBills, totalClientBilled, totalClientReceived, totalTds, retentionBalance, pAndL, trialBalance, payableToContractors, receivableFromClient]
+      properties:
+        contractValue: { type: number }
+        totalBilled: { type: number }
+        totalPaid: { type: number }
+        totalDeducted: { type: number }
+        totalGstOnBills: { type: number }
+        totalClientBilled: { type: number }
+        totalClientReceived: { type: number }
+        totalTds: { type: number }
+        retentionBalance: { type: number }
+        pAndL:
+          type: object
+          required: [revenue, expenditure, grossProfit, grossMarginPct]
+          properties:
+            revenue: { type: number }
+            expenditure: { type: number }
+            grossProfit: { type: number }
+            grossMarginPct: { type: number }
+        trialBalance:
+          type: array
+          items:
+            type: object
+            required: [accountCode, accountName, accountType, openingBalance, currentBalance]
+            properties:
+              accountCode: { type: string }
+              accountName: { type: string }
+              accountType: { type: string }
+              openingBalance: { type: number }
+              currentBalance: { type: number }
+        payableToContractors: { type: number }
+        receivableFromClient: { type: number }
+
+    AgingReport:
+      type: object
+      required: ["0-30", "31-60", "61-90", ">90"]
+      properties:
+        "0-30":
+          type: object
+          required: [count, amount, bills]
+          properties:
+            count: { type: integer }
+            amount: { type: number }
+            bills: { type: array, items: { type: object } }
+        "31-60":
+          type: object
+          required: [count, amount, bills]
+          properties:
+            count: { type: integer }
+            amount: { type: number }
+            bills: { type: array, items: { type: object } }
+        "61-90":
+          type: object
+          required: [count, amount, bills]
+          properties:
+            count: { type: integer }
+            amount: { type: number }
+            bills: { type: array, items: { type: object } }
+        ">90":
+          type: object
+          required: [count, amount, bills]
+          properties:
+            count: { type: integer }
+            amount: { type: number }
+            bills: { type: array, items: { type: object } }
+
+
+    Worker:
+      type: object
+      required: [id, projectId, name, workerCode, trade, skillLevel, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        contractorId: { type: string, nullable: true }
+        workerCode: { type: string }
+        name: { type: string }
+        trade: { type: string }
+        skillLevel: { type: string }
+        aadhaarNumber: { type: string, nullable: true }
+        pfNumber: { type: string, nullable: true }
+        esiNumber: { type: string, nullable: true }
+        dailyRate: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    WorkerInput:
+      type: object
+      required: [name, trade, skillLevel, dailyRate]
+      properties:
+        name: { type: string }
+        trade: { type: string }
+        skillLevel: { type: string }
+        aadhaarNumber: { type: string }
+        pfNumber: { type: string }
+        esiNumber: { type: string }
+        dailyRate: { type: number }
+        contractorId: { type: string }
+
+    PayrollPeriod:
+      type: object
+      required: [id, projectId, fromDate, toDate, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        fromDate: { type: string, format: date-time }
+        toDate: { type: string, format: date-time }
+        status: { type: string, enum: [draft, computed, approved, paid] }
+        totalGross: { type: string, nullable: true }
+        totalNet: { type: string, nullable: true }
+        totalEpf: { type: string, nullable: true }
+        totalEsi: { type: string, nullable: true }
+        approvedById: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    SafetyDashboard:
+      type: object
+      required: [openPermits, activePermits, openNcrs, openIncidents, totalWorkers, ppeCompliancePct]
+      properties:
+        openPermits: { type: integer }
+        activePermits: { type: integer }
+        openNcrs: { type: integer }
+        openIncidents: { type: integer }
+        totalWorkers: { type: integer }
+        ppeCompliancePct: { type: number }
+        recentIncidents: { type: array, items: { type: object } }
+        highRisks: { type: array, items: { type: object } }
+
+    QualityTest:
+      type: object
+      required: [id, projectId, testType, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        irId: { type: string, nullable: true }
+        itpItemId: { type: string, nullable: true }
+        testType: { type: string }
+        isCodeRef: { type: string, nullable: true }
+        sampleId: { type: string, nullable: true }
+        sampleLocation: { type: string, nullable: true }
+        sampleDate: { type: string, format: date-time, nullable: true }
+        testDate: { type: string, format: date-time, nullable: true }
+        labName: { type: string, nullable: true }
+        testUnit: { type: string, nullable: true }
+        testValue: { type: string, nullable: true }
+        minAcceptable: { type: string, nullable: true }
+        maxAcceptable: { type: string, nullable: true }
+        passed: { type: boolean, nullable: true }
+        remarks: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    LabourContractorBill:
+      type: object
+      required: [id, projectId, billNumber, periodFrom, periodTo, claimedAmount, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        contractorId: { type: string, nullable: true }
+        periodId: { type: string, nullable: true }
+        billNumber: { type: string }
+        periodFrom: { type: string, format: date-time }
+        periodTo: { type: string, format: date-time }
+        claimedHeadcount: { type: integer }
+        claimedDays: { type: string }
+        claimedAmount: { type: string }
+        verifiedHeadcount: { type: integer, nullable: true }
+        verifiedDays: { type: string, nullable: true }
+        verifiedAmount: { type: string, nullable: true }
+        discrepancyNotes: { type: string, nullable: true }
+        status: { type: string, enum: [draft, submitted, under_review, approved, rejected] }
+        approvedById: { type: string, nullable: true }
+        approvedAt: { type: string, format: date-time, nullable: true }
+        rejectionReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }

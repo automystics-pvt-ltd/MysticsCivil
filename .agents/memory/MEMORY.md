@@ -1,0 +1,7 @@
+- [Approval ticket integrity](approval-tickets.md) — pending-approval rows need (a) DB-level partial unique index, (b) admin-only resolve, (c) single state path (resolve route, not transition).
+- [Project lifecycle gates](project-lifecycle-gates.md) — every project status change must check per-project access (userCanSeeProject), not just org match.
+- [DB push workaround](db-push-workaround.md) — drizzle-kit push/push-force both fail non-interactively; apply new tables directly via `psql "$DATABASE_URL"` with raw SQL instead.
+- [Pre-Award lifecycle](pre-award-lifecycle.md) — 6-table pre-award module: leads→customers→pre_estimations→quotations→tenders→projects; URL-param linking pattern between pages.
+- [Lifecycle coupling pattern](lifecycle-coupling.md) — Lead→Tender via URL params (?fromLead=); Tender→Project via /projects/new?fromTender=; project-new.tsx reads tenderPrefill from useSearch().
+- [SaaS subscription layer](saas-subscription.md) — 3 tables (subscription_plans, tenant_subscriptions, tenant_invitations); plan limits enforced via loadTenantPlan + checkPlanLimit; super_admin gets uncapped virtual plan.
+- [Express router.use path scope](express-router-use-path-scope.md) — router.use(middleware) without a path prefix intercepts ALL requests; always use router.use("/path", middleware) for feature gates.

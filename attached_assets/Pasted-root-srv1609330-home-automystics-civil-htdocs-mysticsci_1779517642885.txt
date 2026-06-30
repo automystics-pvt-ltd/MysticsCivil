@@ -1,0 +1,42 @@
+root@srv1609330:/home/automystics_civil/htdocs/mysticscivil.automystics.tech# # 1. Try the web build and show the full output
+cd /home/automystics_civil/htdocs/mysticscivil.automystics.tech
+BASE_PATH=/ pnpm --filter @workspace/web run build 2>&1 | tail -30
+echo "---EXIT: $?---"
+ls -la artifacts/web/dist/ 2>&1 | head -5
+
+# 2. Find the actual nginx user on this system
+ps -eo user,comm | grep nginx | head -3
+grep -E "^user" /etc/nginx/nginx.conf
+
+> @workspace/web@0.0.0 build /home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/web
+> vite build --config vite.config.ts
+
+vite v7.3.3 building client environment for production...
+transforming...
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/dropdown-menu.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+✓ 2690 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/public/index.html                          1.36 kB │ gzip:   0.55 kB
+dist/public/assets/index-Cb1o2tfm.css         205.36 kB │ gzip:  32.44 kB
+dist/public/assets/exceljs.min-1Cn0yqTm.js    936.98 kB │ gzip: 270.74 kB
+dist/public/assets/index-Gt5Itp4i.js        1,381.89 kB │ gzip: 364.86 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 13.94s
+---EXIT: 0---
+total 12
+drwxrwxr-x 3 root root 4096 May 23 06:11 .
+drwxrwxr-x 7 root root 4096 May 23 06:11 ..
+drwxrwxr-x 3 root root 4096 May 23 06:26 public
+root     nginx
+clp      nginx
+clp      nginx
+user root;
+root@srv1609330:/home/automystics_civil/htdocs/mysticscivil.automystics.tech# 

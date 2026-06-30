@@ -1,0 +1,92 @@
+root@srv1609330:/home/automystics_civil/htdocs/mysticscivil.automystics.tech# cd /home/automystics_civil/htdocs/mysticscivil.automystics.tech
+pnpm -r --if-present run build
+ls -la artifacts/api-server/dist/index.mjs   # should exist now
+pm2 restart mysticscivil-api
+pm2 logs mysticscivil-api --lines 50 --nostream
+Scope: 10 of 11 workspace projects
+artifacts/mockup-sandbox build$ vite build
+│ failed to load config from /home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/mockup-sandbox/vite.config.ts
+│ error during build:
+│ Error: BASE_PATH environment variable is required but was not provided.
+│     at file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/mockup-sandbox/node_modules/.vite-temp/vite.config.ts.timestamp-1779516553297-45e73b4a1468e.…
+│     at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+│     at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+│     at async loadConfigFromBundledFile (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightning…
+│     at async bundleAndLoadConfigFile (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcs…
+│     at async loadConfigFromFile (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.3…
+│     at async resolveConfig (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_t…
+│     at async createBuilder (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0_t…
+│     at async CAC.<anonymous> (file:///home/automystics_civil/htdocs/mysticscivil.automystics.tech/node_modules/.pnpm/vite@7.3.3_@types+node@25.6.2_jiti@2.7.0_lightningcss@1.32.0…
+└─ Failed in 493ms at /home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/mockup-sandbox
+/home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/mockup-sandbox:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/mockup-sandbox@2.0.0 build: `vite build`
+Exit status 1
+ls: cannot access 'artifacts/api-server/dist/index.mjs': No such file or directory
+Use --update-env to update environment variables
+[PM2] Applying action restartProcessId on app [mysticscivil-api](ids: [ 14 ])
+[PM2] [mysticscivil-api](14) ✓
+┌────┬───────────────────────┬─────────────┬─────────┬─────────┬──────────┬────────┬──────┬───────────┬──────────┬──────────┬──────────┬──────────┐
+│ id │ name                  │ namespace   │ version │ mode    │ pid      │ uptime │ ↺    │ status    │ cpu      │ mem      │ user     │ watching │
+├────┼───────────────────────┼─────────────┼─────────┼─────────┼──────────┼────────┼──────┼───────────┼──────────┼──────────┼──────────┼──────────┤
+│ 2  │ automystics-api       │ default     │ 0.0.0   │ fork    │ 178189   │ 16h    │ 12   │ online    │ 0%       │ 115.7mb  │ root     │ disabled │
+│ 0  │ fitro360              │ default     │ 1.0.0   │ fork    │ 178157   │ 16h    │ 12   │ online    │ 0%       │ 117.2mb  │ root     │ disabled │
+│ 1  │ kalvicore-api         │ default     │ 0.0.0   │ fork    │ 178160   │ 16h    │ 12   │ online    │ 0%       │ 108.6mb  │ root     │ disabled │
+│ 8  │ mystics-api           │ default     │ 0.0.0   │ fork    │ 178224   │ 16h    │ 13   │ online    │ 0%       │ 266.5mb  │ root     │ disabled │
+│ 14 │ mysticscivil-api      │ default     │ N/A     │ fork    │ 3338351  │ 0s     │ 15   │ online    │ 0%       │ 6.4mb    │ root     │ disabled │
+│ 11 │ mysticshr-api         │ default     │ 0.0.0   │ fork    │ 354671   │ 15h    │ 1176 │ online    │ 0%       │ 267.7mb  │ root     │ disabled │
+│ 4  │ people-connect-api    │ default     │ 0.0.0   │ fork    │ 178192   │ 16h    │ 13   │ online    │ 0%       │ 197.6mb  │ root     │ disabled │
+│ 6  │ tkprabhu-api          │ default     │ 0.0.0   │ fork    │ 178210   │ 16h    │ 35   │ online    │ 0%       │ 196.1mb  │ root     │ disabled │
+└────┴───────────────────────┴─────────────┴─────────┴─────────┴──────────┴────────┴──────┴───────────┴──────────┴──────────┴──────────┴──────────┘
+[TAILING] Tailing last 50 lines for [mysticscivil-api] process (change the value with --lines option)
+/root/.pm2/logs/mysticscivil-api-out.log last 50 lines:
+/root/.pm2/logs/mysticscivil-api-error.log last 50 lines:
+14|mystics | Error: Cannot find module '/home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/api-server/dist/index.mjs'
+14|mystics |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+14|mystics |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+14|mystics |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+14|mystics |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+14|mystics |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+14|mystics |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+14|mystics |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+14|mystics |     at node:internal/main/run_main_module:36:49 {
+14|mystics |   code: 'MODULE_NOT_FOUND',
+14|mystics |   requireStack: []
+14|mystics | }
+14|mystics | 
+14|mystics | Node.js v22.22.2
+14|mystics | node:internal/modules/cjs/loader:1386
+14|mystics |   throw err;
+14|mystics |   ^
+14|mystics | 
+14|mystics | Error: Cannot find module '/home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/api-server/dist/index.mjs'
+14|mystics |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+14|mystics |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+14|mystics |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+14|mystics |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+14|mystics |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+14|mystics |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+14|mystics |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+14|mystics |     at node:internal/main/run_main_module:36:49 {
+14|mystics |   code: 'MODULE_NOT_FOUND',
+14|mystics |   requireStack: []
+14|mystics | }
+14|mystics | 
+14|mystics | Node.js v22.22.2
+14|mystics | node:internal/modules/cjs/loader:1386
+14|mystics |   throw err;
+14|mystics |   ^
+14|mystics | 
+14|mystics | Error: Cannot find module '/home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/api-server/dist/index.mjs'
+14|mystics |     at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+14|mystics |     at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+14|mystics |     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+14|mystics |     at Function._load (node:internal/modules/cjs/loader:1192:37)
+14|mystics |     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+14|mystics |     at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+14|mystics |     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+14|mystics |     at node:internal/main/run_main_module:36:49 {
+14|mystics |   code: 'MODULE_NOT_FOUND',
+14|mystics |   requireStack: []
+14|mystics | }
+14|mystics | 
+14|mystics | Node.js v22.22.2

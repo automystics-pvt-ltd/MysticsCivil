@@ -1,0 +1,37 @@
+uploads = []
+
+[[generated]]
+id = "BK3j_-jZnNf6jGo4S8WPk"
+uri = "file://artifacts/web/public/assets/site1.png"
+type = "image"
+title = "construction site sunset"
+
+[[generated]]
+id = "YmM9fJHqCg3ybxfY5ONb8"
+uri = "file://artifacts/web/public/assets/site2.png"
+type = "image"
+title = "rebar grid close up"
+
+[[generated]]
+id = "aItDHfKcOVQ_jZ0lIXCT0"
+uri = "file://artifacts/web/public/assets/site3.png"
+type = "image"
+title = "site office blueprint"
+
+[[outputs]]
+id = "lAUNAe8BZQvTqvABcgo-c"
+uri = "file://docs/APPLICATION_WORKFLOW.md"
+type = "text"
+title = "KattidaCore — Application Workflow Reference"
+
+[[outputs]]
+id = "k5mUC4PT5GP0WY3CQVvbw"
+uri = "file://exports/Mystics Civil.pdf"
+type = "pdf"
+title = "Mystics Civil — Complete Guide & Demo Handbook"
+
+[[outputs]]
+id = "Q7krd8Yn__ZpNxK3QG_rV"
+uri = "file://exports/Mystics Civil - Pitch Deck.pdf"
+type = "pdf"
+title = "Mystics Civil — Pitch Deck"

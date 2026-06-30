@@ -1,0 +1,71 @@
+root@srv1609330:/home/automystics_civil/htdocs/mysticscivil.automystics.tech# # 1. Does the web build exist?
+ls -la /home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/web/dist/index.html
+
+# 2. Show the nginx config for this site
+ls /etc/nginx/sites-enabled/ | grep -i mystic
+cat /etc/nginx/sites-enabled/*mysticscivil* 2>/dev/null || find /etc/nginx -name "*mysticscivil*"
+ls: cannot access '/home/automystics_civil/htdocs/mysticscivil.automystics.tech/artifacts/web/dist/index.html': No such file or directory
+kalvicore.automystics.tech.conf
+kuralai.automystics.tech.conf
+kuralai.automystics.tech.conf.bak.1777997518
+kuralai.automystics.tech.conf.bak.1778000544
+mysticscivil.automystics.tech.conf
+mysticshr.automystics.tech.conf
+mysticsinv.automystics.tech.conf
+solarnexus.automystics.tech.conf
+www.automystics.com.conf
+server {
+  listen 80;
+  listen [::]:80;
+  listen 443 quic;
+  listen 443 ssl;
+  listen [::]:443 quic;
+  listen [::]:443 ssl;
+  http2 on;
+  http3 off;
+  ssl_certificate_key /etc/nginx/ssl-certificates/mysticscivil.automystics.tech.key;
+  ssl_certificate /etc/nginx/ssl-certificates/mysticscivil.automystics.tech.crt;
+  server_name mysticscivil.automystics.tech;
+  root /home/automystics_civil/htdocs/mysticscivil.automystics.tech;
+
+  access_log /home/automystics_civil/logs/nginx/access.log main;
+  error_log /home/automystics_civil/logs/nginx/error.log;
+
+  if ($scheme != "https") {
+    rewrite ^ https://$host$request_uri permanent;
+  }
+
+  location ~ /.well-known {
+    auth_basic off;
+    allow all;
+  }
+
+  
+
+  include /etc/nginx/global_settings;
+
+  index index.html;
+
+  location / {
+    proxy_pass http://127.0.0.1:3050/;
+    proxy_http_version 1.1;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Server $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host $host;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "Upgrade";
+    proxy_pass_request_headers on;
+    proxy_max_temp_file_size 0;
+    proxy_connect_timeout 900;
+    proxy_send_timeout 900;
+    proxy_read_timeout 900;
+    proxy_buffer_size 128k;
+    proxy_buffers 4 256k;
+    proxy_busy_buffers_size 256k;
+    proxy_temp_file_write_size 256k;
+  }
+}
+root@srv1609330:/home/automystics_civil/htdocs/mysticscivil.automystics.tech# 
