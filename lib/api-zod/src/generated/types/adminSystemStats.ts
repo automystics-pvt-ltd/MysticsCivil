@@ -16,5 +16,6 @@ export interface AdminSystemStats {
   totalProjects: number;
   dprsLast30Days: number;
   newTenantsLast30Days: number;
+  responseTimeP95Ms: number;
   signupsByDay?: AdminSystemStatsSignupsByDayItem[];
 }

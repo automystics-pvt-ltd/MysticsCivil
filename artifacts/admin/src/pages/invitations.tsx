@@ -1,7 +1,9 @@
-import { useListAdminInvitations, useListAdminCustomRoles } from "@workspace/api-client-react";
-import { Layout } from "@/components/layout";
 import { useState } from "react";
+import { useListAdminInvitations, useRevokeAdminInvitation, getListAdminInvitationsQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Layout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -13,21 +15,40 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
-import { Search } from "lucide-react";
+import { Search, XCircle, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Invitations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  
-  const { data: invitations, isLoading } = useListAdminInvitations({ 
-    params: statusFilter !== "all" ? { status: statusFilter as any } : {} 
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: invitations, isLoading } = useListAdminInvitations({
+    params: statusFilter !== "all" ? { status: statusFilter as any } : {},
   });
 
-  const filteredInvs = invitations?.filter(i => 
+  const revokeInvitation = useRevokeAdminInvitation();
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  const filteredInvs = (invitations || []).filter(i =>
     i.email.toLowerCase().includes(search.toLowerCase()) ||
     i.orgName.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  );
+
+  const handleRevoke = async (invId: string) => {
+    setRevokingId(invId);
+    try {
+      await revokeInvitation.mutateAsync({ invId });
+      await queryClient.invalidateQueries({ queryKey: getListAdminInvitationsQueryKey() });
+      toast({ title: "Invitation revoked" });
+    } catch (error: any) {
+      toast({ title: "Revoke failed", description: error.message, variant: "destructive" });
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   return (
     <Layout>
@@ -73,23 +94,19 @@ export default function Invitations() {
                 <TableHead>Status</TableHead>
                 <TableHead>Sent On</TableHead>
                 <TableHead>Action Date</TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    {[...Array(7)].map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-full" /></TableCell>)}
                   </TableRow>
                 ))
               ) : filteredInvs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     No invitations found
                   </TableCell>
                 </TableRow>
@@ -102,24 +119,41 @@ export default function Invitations() {
                       <Badge variant="outline">{inv.role}</Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      <Badge
                         variant="secondary"
                         className={
-                          inv.status === 'accepted' ? 'bg-green-50 text-green-700' :
-                          inv.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                          'bg-gray-100 text-gray-600'
+                          inv.status === "accepted" ? "bg-green-50 text-green-700" :
+                          inv.status === "pending" ? "bg-amber-50 text-amber-700" :
+                          "bg-gray-100 text-gray-600"
                         }
                       >
                         {inv.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-gray-500 text-sm">
-                      {format(parseISO(inv.createdAt), 'MMM d, yyyy')}
+                      {format(parseISO(inv.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-gray-500 text-sm">
-                      {inv.acceptedAt ? format(parseISO(inv.acceptedAt), 'MMM d, yyyy') : 
-                       inv.revokedAt ? 'Revoked' : 
-                       inv.status === 'expired' ? 'Expired' : '-'}
+                      {inv.acceptedAt ? format(parseISO(inv.acceptedAt), "MMM d, yyyy") :
+                       inv.revokedAt ? "Revoked" :
+                       inv.status === "expired" ? "Expired" : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {inv.status === "pending" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 h-7 px-2"
+                          onClick={() => handleRevoke(inv.id)}
+                          disabled={revokingId === inv.id}
+                        >
+                          {revokingId === inv.id
+                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            : <XCircle className="h-3.5 w-3.5 mr-1" />
+                          }
+                          Revoke
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

@@ -233,6 +233,7 @@ import type {
   RetentionLedgerEntry,
   ReverseGeocodeRequest,
   ReverseGeocodeResponse,
+  RevokeAdminInvitation200,
   SafetyDashboard,
   SafetyTrendsDashboard,
   SitePhoto,
@@ -15295,6 +15296,76 @@ export function useListAdminInvitations<TData = Awaited<ReturnType<typeof listAd
 
 
 
+
+export const getRevokeAdminInvitationUrl = (invId: string,) => {
+
+
+
+
+  return `/api/admin/invitations/${invId}`
+}
+
+/**
+ * @summary Revoke a pending invitation (super_admin only)
+ */
+export const revokeAdminInvitation = async (invId: string, options?: RequestInit): Promise<RevokeAdminInvitation200> => {
+
+  return customFetch<RevokeAdminInvitation200>(getRevokeAdminInvitationUrl(invId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeAdminInvitationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAdminInvitation>>, TError,{invId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeAdminInvitation>>, TError,{invId: string}, TContext> => {
+
+const mutationKey = ['revokeAdminInvitation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeAdminInvitation>>, {invId: string}> = (props) => {
+          const {invId} = props ?? {};
+
+          return  revokeAdminInvitation(invId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeAdminInvitationMutationResult = NonNullable<Awaited<ReturnType<typeof revokeAdminInvitation>>>
+
+    export type RevokeAdminInvitationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revoke a pending invitation (super_admin only)
+ */
+export const useRevokeAdminInvitation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeAdminInvitation>>, TError,{invId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeAdminInvitation>>,
+        TError,
+        {invId: string},
+        TContext
+      > => {
+      return useMutation(getRevokeAdminInvitationMutationOptions(options));
+    }
 
 export const getListAdminCustomRolesUrl = () => {
 

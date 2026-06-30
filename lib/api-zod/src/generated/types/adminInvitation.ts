@@ -13,7 +13,6 @@ export interface AdminInvitation {
   orgName: string;
   email: string;
   role: string;
-  token: string;
   status?: AdminInvitationStatus;
   /** @nullable */
   acceptedAt?: Date | null;

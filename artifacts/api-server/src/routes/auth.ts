@@ -38,8 +38,18 @@ function serializeUser(u: { id: string; email: string | null; firstName: string 
   };
 }
 
-router.get("/auth/user", (req: Request, res: Response) => {
-  res.json({ user: req.isAuthenticated() ? req.user : null });
+router.get("/auth/user", async (req: Request, res: Response) => {
+  if (!req.isAuthenticated() || !req.user) {
+    res.json({ user: null });
+    return;
+  }
+  const userId = req.user.id;
+  const [profile] = await db
+    .select({ role: userProfilesTable.role })
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId))
+    .limit(1);
+  res.json({ user: { ...req.user, globalRole: profile?.role ?? null } });
 });
 
 router.post("/auth/register", async (req: Request, res: Response) => {

@@ -19,6 +19,8 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
+  /** @nullable */
+  globalRole?: string | null;
 }
 
 export interface AuthUserEnvelope {
@@ -1780,7 +1782,7 @@ export type AdminTenantStatusUpdateStatus = typeof AdminTenantStatusUpdateStatus
 export const AdminTenantStatusUpdateStatus = {
   active: 'active',
   suspended: 'suspended',
-  cancelled: 'cancelled',
+  deleted: 'deleted',
 } as const;
 
 export interface AdminTenantStatusUpdate {
@@ -1839,7 +1841,6 @@ export interface AdminInvitation {
   orgName: string;
   email: string;
   role: string;
-  token: string;
   status?: AdminInvitationStatus;
   /** @nullable */
   acceptedAt?: string | null;
@@ -1880,6 +1881,7 @@ export interface AdminSystemStats {
   totalProjects: number;
   dprsLast30Days: number;
   newTenantsLast30Days: number;
+  responseTimeP95Ms: number;
   signupsByDay?: AdminSystemStatsSignupsByDayItem[];
 }
 
@@ -2562,5 +2564,9 @@ export type UpdateLabourContractorBillBody = { [key: string]: unknown };
 export type ListAdminInvitationsParams = {
 status?: string;
 orgId?: string;
+};
+
+export type RevokeAdminInvitation200 = {
+  success: boolean;
 };
 

@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Tenants from "@/pages/tenants";
 import TenantDetail from "@/pages/tenant-detail";
+import Subscriptions from "@/pages/subscriptions";
 import Invitations from "@/pages/invitations";
 import CustomRoles from "@/pages/custom-roles";
 import Login from "@/pages/login";
@@ -38,6 +39,11 @@ function Router() {
       <Route path="/tenants/:orgId">
         <AuthProvider>
           <TenantDetail />
+        </AuthProvider>
+      </Route>
+      <Route path="/subscriptions">
+        <AuthProvider>
+          <Subscriptions />
         </AuthProvider>
       </Route>
       <Route path="/invitations">

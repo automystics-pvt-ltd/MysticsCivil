@@ -3274,6 +3274,27 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/AdminInvitation' }
 
+  /admin/invitations/{invId}:
+    delete:
+      operationId: revokeAdminInvitation
+      tags: [PlatformAdmin]
+      summary: Revoke a pending invitation (super_admin only)
+      parameters:
+        - name: invId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+
   /admin/custom-roles:
     get:
       operationId: listAdminCustomRoles
@@ -3338,6 +3359,7 @@ components:
         firstName: { type: [string, 'null'] }
         lastName: { type: [string, 'null'] }
         profileImageUrl: { type: [string, 'null'] }
+        globalRole: { type: [string, 'null'] }
     AuthUserEnvelope:
       type: object
       required: [user]
@@ -4879,7 +4901,7 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: string, enum: [active, suspended, cancelled] }
+        status: { type: string, enum: [active, suspended, deleted] }
 
     AdminTenantSubscriptionUpdate:
       type: object
@@ -4898,14 +4920,13 @@ components:
 
     AdminInvitation:
       type: object
-      required: [id, organisationId, orgName, email, role, token, expiresAt, createdAt]
+      required: [id, organisationId, orgName, email, role, expiresAt, createdAt]
       properties:
         id: { type: string }
         organisationId: { type: string }
         orgName: { type: string }
         email: { type: string }
         role: { type: string }
-        token: { type: string }
         status: { type: string, enum: [pending, accepted, revoked, expired] }
         acceptedAt: { type: ["string", "null"], format: date-time }
         revokedAt: { type: ["string", "null"], format: date-time }
@@ -4926,7 +4947,7 @@ components:
 
     AdminSystemStats:
       type: object
-      required: [totalTenants, activeTenants, suspendedTenants, totalUsers, totalProjects, dprsLast30Days, newTenantsLast30Days]
+      required: [totalTenants, activeTenants, suspendedTenants, totalUsers, totalProjects, dprsLast30Days, newTenantsLast30Days, responseTimeP95Ms]
       properties:
         totalTenants: { type: integer }
         activeTenants: { type: integer }
@@ -4936,6 +4957,7 @@ components:
         totalProjects: { type: integer }
         dprsLast30Days: { type: integer }
         newTenantsLast30Days: { type: integer }
+        responseTimeP95Ms: { type: number }
         signupsByDay:
           type: array
           items:

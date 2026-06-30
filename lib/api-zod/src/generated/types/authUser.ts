@@ -16,4 +16,6 @@ export interface AuthUser {
   lastName: string | null;
   /** @nullable */
   profileImageUrl: string | null;
+  /** @nullable */
+  globalRole?: string | null;
 }

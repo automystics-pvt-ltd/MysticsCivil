@@ -33,10 +33,17 @@ import quotationsRouter from "./quotations";
 import statusHistoryRouter from "./status-history";
 import invitationsRouter from "./invitations";
 import subscriptionPlansRouter from "./subscription-plans";
-import adminPlatformRouter from "./admin-platform";
+import adminPlatformRouter, { recordResponseTime } from "./admin-platform";
 import { requireProjectAccess } from "../lib/access";
 
 const router: IRouter = Router();
+
+// ── Track response times for p95 metric ─────────────────────────────────────
+router.use((_req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => recordResponseTime(Date.now() - start));
+  next();
+});
 
 router.use((req, res, next) => {
   if (req.method === "OPTIONS") return next();

@@ -12,5 +12,5 @@ export type AdminTenantStatusUpdateStatus = typeof AdminTenantStatusUpdateStatus
 export const AdminTenantStatusUpdateStatus = {
   active: 'active',
   suspended: 'suspended',
-  cancelled: 'cancelled',
+  deleted: 'deleted',
 } as const;

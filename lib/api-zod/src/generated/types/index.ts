@@ -222,6 +222,7 @@ export * from './releaseContractorPayment200';
 export * from './releaseContractorPaymentBodyMode';
 export * from './retentionLedgerEntry';
 export * from './reverseGeocodeRequest';
+export * from './revokeAdminInvitation200';
 export * from './safetyDashboard';
 export * from './safetyDashboardHighRisksItem';
 export * from './safetyDashboardRecentIncidentsItem';

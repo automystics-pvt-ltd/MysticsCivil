@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLoginUser, getGetCurrentAuthUserQueryKey } from "@workspace/api-client-react";
+import { useLoginUser, useGetCurrentAuthUser, getGetCurrentAuthUserQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +40,26 @@ export default function Login() {
     try {
       await loginMutation.mutateAsync({ data });
       await queryClient.invalidateQueries({ queryKey: getGetCurrentAuthUserQueryKey() });
+
+      const freshEnvelope = await queryClient.fetchQuery({
+        queryKey: getGetCurrentAuthUserQueryKey(),
+        queryFn: async () => {
+          const res = await fetch("/api/auth/user", { credentials: "include" });
+          return res.json();
+        },
+        staleTime: 0,
+      });
+
+      const globalRole = freshEnvelope?.user?.globalRole;
+      if (globalRole !== "super_admin") {
+        toast({
+          title: "Access denied",
+          description: "This portal requires a super_admin account.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setLocation("/");
     } catch (error: any) {
       toast({
@@ -97,9 +117,9 @@ export default function Login() {
               />
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

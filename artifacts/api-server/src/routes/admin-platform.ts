@@ -11,9 +11,27 @@ import {
   tenantInvitationsTable,
   dprsTable,
 } from "@workspace/db";
-import { eq, sql, count, and, gte, desc } from "drizzle-orm";
+import { eq, sql, count, gte, desc } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { isSuperAdmin } from "../lib/access";
+
+// ── In-memory p95 response-time tracker ────────────────────────────────────
+const RESPONSE_TIME_WINDOW = 1000;
+const responseTimes: number[] = [];
+
+export function recordResponseTime(ms: number) {
+  responseTimes.push(ms);
+  if (responseTimes.length > RESPONSE_TIME_WINDOW) {
+    responseTimes.shift();
+  }
+}
+
+function computeP95(): number {
+  if (responseTimes.length === 0) return 0;
+  const sorted = [...responseTimes].sort((a, b) => a - b);
+  const idx = Math.ceil(sorted.length * 0.95) - 1;
+  return sorted[Math.max(0, idx)];
+}
 
 const router: IRouter = Router();
 
@@ -128,13 +146,13 @@ router.get("/admin/tenants/:orgId", requireAuth, async (req: Request, res: Respo
   res.json(tenant);
 });
 
-// ── PATCH /admin/tenants/:orgId (status: active | suspended | cancelled) ──
+// ── PATCH /admin/tenants/:orgId (status: active | suspended | deleted) ─────
 
 router.patch("/admin/tenants/:orgId", requireAuth, async (req: Request, res: Response) => {
   if (!(await assertSuperAdmin(req, res))) return;
   const { orgId } = req.params;
   const { status } = req.body as { status: string };
-  const ALLOWED = ["active", "suspended", "cancelled"];
+  const ALLOWED = ["active", "suspended", "deleted"];
   if (!status || !ALLOWED.includes(status)) {
     res.status(400).json({ error: `status must be one of: ${ALLOWED.join(", ")}` });
     return;
@@ -151,11 +169,13 @@ router.patch("/admin/tenants/:orgId", requireAuth, async (req: Request, res: Res
     return;
   }
 
+  // Map `deleted` to a cancelled-with-timestamp state for DB storage
+  const dbStatus = status === "deleted" ? "cancelled" : status;
   const updateData: Record<string, unknown> = {
-    status,
+    status: dbStatus,
     updatedAt: new Date(),
   };
-  if (status === "cancelled") {
+  if (status === "deleted") {
     updateData.cancelledAt = new Date();
   }
 
@@ -382,7 +402,6 @@ router.get("/admin/invitations", requireAuth, async (req: Request, res: Response
       orgName: organisationsTable.name,
       email: tenantInvitationsTable.email,
       role: tenantInvitationsTable.role,
-      token: tenantInvitationsTable.token,
       acceptedAt: tenantInvitationsTable.acceptedAt,
       revokedAt: tenantInvitationsTable.revokedAt,
       expiresAt: tenantInvitationsTable.expiresAt,
@@ -408,7 +427,6 @@ router.get("/admin/invitations", requireAuth, async (req: Request, res: Response
         orgName: r.orgName ?? "Unknown",
         email: r.email,
         role: r.role,
-        token: r.token,
         status: computedStatus,
         acceptedAt: r.acceptedAt?.toISOString() ?? null,
         revokedAt: r.revokedAt?.toISOString() ?? null,
@@ -423,6 +441,39 @@ router.get("/admin/invitations", requireAuth, async (req: Request, res: Response
     });
 
   res.json(mapped);
+});
+
+// ── DELETE /admin/invitations/:invId (revoke) ──────────────────────────────
+
+router.delete("/admin/invitations/:invId", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { invId } = req.params;
+
+  const [inv] = await db
+    .select({ id: tenantInvitationsTable.id, revokedAt: tenantInvitationsTable.revokedAt, acceptedAt: tenantInvitationsTable.acceptedAt })
+    .from(tenantInvitationsTable)
+    .where(eq(tenantInvitationsTable.id, invId))
+    .limit(1);
+
+  if (!inv) {
+    res.status(404).json({ error: "Invitation not found" });
+    return;
+  }
+  if (inv.acceptedAt) {
+    res.status(400).json({ error: "Cannot revoke an already accepted invitation" });
+    return;
+  }
+  if (inv.revokedAt) {
+    res.status(400).json({ error: "Invitation is already revoked" });
+    return;
+  }
+
+  await db
+    .update(tenantInvitationsTable)
+    .set({ revokedAt: new Date() } as any)
+    .where(eq(tenantInvitationsTable.id, invId));
+
+  res.json({ success: true });
 });
 
 // ── GET /admin/custom-roles ────────────────────────────────────────────────
@@ -510,6 +561,7 @@ router.get("/admin/system-stats", requireAuth, async (req: Request, res: Respons
     totalProjects: Number(totalProjects?.cnt ?? 0),
     dprsLast30Days: Number(dprsLast30?.cnt ?? 0),
     newTenantsLast30Days: Number(newTenants?.cnt ?? 0),
+    responseTimeP95Ms: computeP95(),
     signupsByDay: signupsByDayRaw.map((r) => ({
       date: r.date,
       count: Number(r.count),

@@ -75,7 +75,8 @@ export const GetCurrentAuthUserResponse = zod.object({
   "email": zod.string().email().nullable(),
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable()
+  "profileImageUrl": zod.string().nullable(),
+  "globalRole": zod.string().nullish()
 }),zod.null()])
 })
 
@@ -116,7 +117,8 @@ export const LoginUserResponse = zod.object({
   "email": zod.string().email().nullable(),
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable()
+  "profileImageUrl": zod.string().nullable(),
+  "globalRole": zod.string().nullish()
 }),zod.null()])
 })
 
@@ -880,14 +882,16 @@ export const GetDprResponse = zod.object({
   "email": zod.string().email().nullable(),
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable()
+  "profileImageUrl": zod.string().nullable(),
+  "globalRole": zod.string().nullish()
 }),zod.null()]),
   "approvedBy": zod.union([zod.object({
   "id": zod.string(),
   "email": zod.string().email().nullable(),
   "firstName": zod.string().nullable(),
   "lastName": zod.string().nullable(),
-  "profileImageUrl": zod.string().nullable()
+  "profileImageUrl": zod.string().nullable(),
+  "globalRole": zod.string().nullish()
 }),zod.null()])
 })
 
@@ -4050,7 +4054,7 @@ export const UpdateAdminTenantStatusParams = zod.object({
 })
 
 export const UpdateAdminTenantStatusBody = zod.object({
-  "status": zod.enum(['active', 'suspended', 'cancelled'])
+  "status": zod.enum(['active', 'suspended', 'deleted'])
 })
 
 export const UpdateAdminTenantStatusResponse = zod.object({
@@ -4187,7 +4191,6 @@ export const ListAdminInvitationsResponseItem = zod.object({
   "orgName": zod.string(),
   "email": zod.string(),
   "role": zod.string(),
-  "token": zod.string(),
   "status": zod.enum(['pending', 'accepted', 'revoked', 'expired']).optional(),
   "acceptedAt": zod.coerce.date().nullish(),
   "revokedAt": zod.coerce.date().nullish(),
@@ -4195,6 +4198,18 @@ export const ListAdminInvitationsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListAdminInvitationsResponse = zod.array(ListAdminInvitationsResponseItem)
+
+
+/**
+ * @summary Revoke a pending invitation (super_admin only)
+ */
+export const RevokeAdminInvitationParams = zod.object({
+  "invId": zod.coerce.string()
+})
+
+export const RevokeAdminInvitationResponse = zod.object({
+  "success": zod.boolean()
+})
 
 
 /**
@@ -4226,6 +4241,7 @@ export const GetAdminSystemStatsResponse = zod.object({
   "totalProjects": zod.number(),
   "dprsLast30Days": zod.number(),
   "newTenantsLast30Days": zod.number(),
+  "responseTimeP95Ms": zod.number(),
   "signupsByDay": zod.array(zod.object({
   "date": zod.string(),
   "count": zod.number()

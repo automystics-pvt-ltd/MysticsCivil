@@ -5,7 +5,8 @@ import {
   Users, 
   Mail, 
   LogOut,
-  Settings
+  Settings,
+  CreditCard,
 } from "lucide-react";
 import { useLogoutUser, useGetCurrentAuthUser, getGetCurrentAuthUserQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/tenants", label: "Tenants", icon: Building2 },
+  { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/invitations", label: "Invitations", icon: Mail },
   { href: "/custom-roles", label: "Custom Roles", icon: Settings },
 ];
