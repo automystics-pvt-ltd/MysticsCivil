@@ -9,6 +9,8 @@ import { loadTenantPlan, FREE_PLAN_FALLBACK } from "./lib/subscription";
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
