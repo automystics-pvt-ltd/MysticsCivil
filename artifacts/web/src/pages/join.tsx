@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { HardHat, Loader2, ArrowRight, AlertTriangle, Building2, UserCheck } from "lucide-react";
+import { HardHat, Loader2, ArrowRight, AlertTriangle, Building2, UserCheck, LogIn } from "lucide-react";
 import { useGetInvitationByToken, useAcceptInvitation } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { useGetMyProfile } from "@workspace/api-client-react";
 
 function roleLabel(role: string) {
   const map: Record<string, string> = {
@@ -16,11 +18,18 @@ function roleLabel(role: string) {
   return map[role] ?? role;
 }
 
+type AcceptTab = "create" | "signin";
+
 export default function JoinPage() {
   const [, params] = useRoute("/join/:token");
   const token = params?.token ?? "";
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const { isAuthenticated } = useAuth();
+  const { data: myProfile } = useGetMyProfile({ query: { enabled: isAuthenticated } as any });
+
+  const [tab, setTab] = useState<AcceptTab>("create");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -33,18 +42,13 @@ export default function JoinPage() {
 
   const acceptMutation = useAcceptInvitation();
 
-  async function handleAccept(e: React.FormEvent) {
-    e.preventDefault();
+  async function doAccept(overrides?: { password?: string; firstName?: string; lastName?: string }) {
     if (busy) return;
     setBusy(true);
     try {
       await acceptMutation.mutateAsync({
         token,
-        data: {
-          firstName: firstName.trim() || undefined,
-          lastName: lastName.trim() || undefined,
-          password: password || undefined,
-        },
+        data: overrides ?? {},
       });
       toast({ title: "Welcome aboard!", description: `You've joined ${inv?.organisation?.name}.` });
       setLocation("/");
@@ -54,6 +58,16 @@ export default function JoinPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleCreateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    doAccept({ firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined, password });
+  }
+
+  function handleSignInSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    doAccept({ password });
   }
 
   const apiError = (error as any)?.response?.data?.error ?? (error as any)?.message;
@@ -108,56 +122,137 @@ export default function JoinPage() {
               </div>
             </div>
 
-            <form onSubmit={handleAccept} className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Create your account to accept this invitation.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="firstName">First name</Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    placeholder="Arjun"
-                    disabled={busy}
-                  />
+            {/* PATH A: Already logged in */}
+            {isAuthenticated && myProfile ? (
+              myProfile.email === inv.email ? (
+                <div className="space-y-4">
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
+                    <UserCheck className="h-5 w-5 text-primary shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Signed in as {myProfile.email}</p>
+                      <p className="text-xs text-muted-foreground">Click below to accept with your current account.</p>
+                    </div>
+                  </div>
+                  <Button className="w-full" disabled={busy} onClick={() => doAccept()}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                    Accept invitation & join team
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="lastName">Last name</Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    placeholder="Kumar"
-                    disabled={busy}
-                  />
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+                    <p className="text-sm font-medium text-destructive">Wrong account</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You're signed in as <strong>{myProfile.email}</strong>, but this invitation is for{" "}
+                      <strong>{inv.email}</strong>. Please sign out and use the invite link again.
+                    </p>
+                  </div>
+                  <Link href="/login">
+                    <Button variant="outline" className="w-full">
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Sign out & switch account
+                    </Button>
+                  </Link>
                 </div>
-              </div>
+              )
+            ) : (
+              /* PATH B & C: Not logged in — show Create / Sign In tabs */
+              <div className="space-y-4">
+                <div className="flex rounded-lg border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setTab("create")}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      tab === "create"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Create account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab("signin")}
+                    className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                      tab === "signin"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    Sign in to accept
+                  </button>
+                </div>
 
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 8 characters"
-                  required
-                  minLength={8}
-                  disabled={busy}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  If you already have an account with this email, enter your current password.
-                </p>
+                {tab === "create" ? (
+                  <form onSubmit={handleCreateSubmit} className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create a new account using <strong>{inv.email}</strong>.
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="firstName">First name</Label>
+                        <Input
+                          id="firstName"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          placeholder="Arjun"
+                          disabled={busy}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lastName">Last name</Label>
+                        <Input
+                          id="lastName"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          placeholder="Kumar"
+                          disabled={busy}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="passwordCreate">Password *</Label>
+                      <Input
+                        id="passwordCreate"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        required
+                        minLength={8}
+                        disabled={busy}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={busy}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
+                      Create account & join
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleSignInSubmit} className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Already have an account with <strong>{inv.email}</strong>? Enter your password to accept.
+                    </p>
+                    <div>
+                      <Label htmlFor="passwordSignIn">Password *</Label>
+                      <Input
+                        id="passwordSignIn"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Your existing password"
+                        required
+                        disabled={busy}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={busy}>
+                      {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <LogIn className="h-4 w-4 mr-2" />}
+                      Sign in & accept
+                    </Button>
+                  </form>
+                )}
               </div>
-
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
-                Accept invitation & join team
-              </Button>
-            </form>
+            )}
           </div>
         )}
       </div>

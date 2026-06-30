@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  HardHat, Loader2, ArrowRight, ArrowLeft, CheckCircle2, Building2, Layers, Users, X,
+  HardHat, Loader2, ArrowRight, ArrowLeft, CheckCircle2, Building2, Layers, Users, X, Image as ImageIcon,
 } from "lucide-react";
 import {
   useGetMyProfile,
@@ -80,8 +80,12 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const [orgCity, setOrgCity] = useState("");
-  const [orgState, setOrgState] = useState("");
+  const { data: profile, isLoading: profileLoading } = useGetMyProfile();
+  const orgId = profile?.organisationId ?? "";
+
+  const [orgNameVal, setOrgNameVal] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [orgNameInitialized, setOrgNameInitialized] = useState(false);
 
   const [selectedModules, setSelectedModules] = useState<Set<string>>(DEFAULT_MODULES);
 
@@ -90,13 +94,25 @@ export default function Onboarding() {
   const [pendingInvites, setPendingInvites] = useState<{ email: string; role: string }[]>([]);
   const [inviteSent, setInviteSent] = useState<string[]>([]);
 
-  const { data: profile } = useGetMyProfile();
-  const orgId = profile?.organisationId ?? "";
-
   const updateOrg = useUpdateOrganisation();
   const updateModules = useUpdateOrganisationModules();
   const createInvitation = useCreateOrgInvitation();
   const completeOnboarding = useCompleteOrgOnboarding();
+
+  // Pre-fill org name from profile once loaded
+  useEffect(() => {
+    if (profile?.organisationName && !orgNameInitialized) {
+      setOrgNameVal(profile.organisationName);
+      setOrgNameInitialized(true);
+    }
+  }, [profile?.organisationName, orgNameInitialized]);
+
+  // "Shown once" guard — if already completed, go to dashboard
+  useEffect(() => {
+    if (!profileLoading && profile?.onboardingCompletedAt) {
+      setLocation("/");
+    }
+  }, [profile?.onboardingCompletedAt, profileLoading, setLocation]);
 
   async function handleFinish() {
     if (!orgId || busy) return;
@@ -136,8 +152,11 @@ export default function Onboarding() {
     if (!orgId || busy) return;
     setBusy(true);
     try {
-      if (orgCity || orgState) {
-        await updateOrg.mutateAsync({ organisationId: orgId, data: { city: orgCity || undefined, state: orgState || undefined } });
+      const updates: Record<string, string | undefined> = {};
+      if (orgNameVal.trim()) updates.name = orgNameVal.trim();
+      if (logoUrl.trim()) updates.logoUrl = logoUrl.trim();
+      if (Object.keys(updates).length) {
+        await updateOrg.mutateAsync({ organisationId: orgId, data: updates as any });
       }
       setStep(1);
     } catch (err: any) {
@@ -184,6 +203,14 @@ export default function Onboarding() {
     });
   }
 
+  if (profileLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-2xl">
@@ -201,21 +228,49 @@ export default function Onboarding() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-lg font-semibold mb-1">Company details</h2>
-                <p className="text-sm text-muted-foreground">Help your team know where you're based.</p>
+                <p className="text-sm text-muted-foreground">Confirm your organisation name and add a logo.</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
-                  <Input id="city" value={orgCity} onChange={(e) => setOrgCity(e.target.value)} placeholder="Mumbai" />
+                  <Label htmlFor="orgNameField">Organisation name *</Label>
+                  <Input
+                    id="orgNameField"
+                    value={orgNameVal}
+                    onChange={(e) => setOrgNameVal(e.target.value)}
+                    placeholder="Mystics Civil Pvt Ltd"
+                    required
+                    disabled={busy}
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="state">State</Label>
-                  <Input id="state" value={orgState} onChange={(e) => setOrgState(e.target.value)} placeholder="Maharashtra" />
+                  <Label htmlFor="logoUrl" className="flex items-center gap-1.5">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Logo URL <span className="text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="logoUrl"
+                    type="url"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    disabled={busy}
+                  />
+                  {logoUrl && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <img
+                        src={logoUrl}
+                        alt="Logo preview"
+                        className="h-12 w-12 rounded-lg border object-contain bg-muted"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                      <p className="text-xs text-muted-foreground">Logo preview</p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex justify-between pt-2">
                 <Button variant="ghost" onClick={handleSkip} disabled={busy}>Skip setup</Button>
-                <Button onClick={saveStep1} disabled={busy}>
+                <Button onClick={saveStep1} disabled={busy || !orgNameVal.trim()}>
                   {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRight className="h-4 w-4 mr-2" />}
                   Next: Choose modules
                 </Button>

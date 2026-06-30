@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@workspace/replit-auth-web";
 import { Layout } from "@/components/layout";
 import { I18nProvider } from "@/lib/i18n";
+import { useGetMyProfile } from "@workspace/api-client-react";
 
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
@@ -33,6 +34,30 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
+/**
+ * Gate that redirects owners who haven't completed onboarding to /onboarding.
+ * Only runs once per session — after completeOnboarding sets onboardingCompletedAt,
+ * the profile query refetches and the gate stops triggering.
+ */
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const { data: profile, isLoading } = useGetMyProfile({ query: { enabled: isAuthenticated } as any });
+  const [location, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !profile) return;
+    const needsOnboarding =
+      profile.role === "owner" &&
+      !profile.onboardingCompletedAt &&
+      location !== "/onboarding";
+    if (needsOnboarding) {
+      setLocation("/onboarding");
+    }
+  }, [profile, isLoading, isAuthenticated, location, setLocation]);
+
+  return <>{children}</>;
+}
+
 function ProtectedRoute({ component: Component, ...rest }: any) {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -56,31 +81,33 @@ function ProtectedRoute({ component: Component, ...rest }: any) {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/join/:token" component={JoinPage} />
-      <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} />} />
-      <Route path="/settings/team" component={() => <ProtectedRoute component={SettingsTeam} />} />
-      <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
-      <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
-      <Route path="/projects/new" component={() => <ProtectedRoute component={ProjectNew} />} />
-      <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
-      <Route path="/dprs/:id" component={() => <ProtectedRoute component={DprDetail} />} />
-      <Route path="/approvals" component={() => <ProtectedRoute component={Approvals} />} />
-      <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
-      <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
-      <Route path="/leads" component={() => <ProtectedRoute component={Leads} />} />
-      <Route path="/customers" component={() => <ProtectedRoute component={Customers} />} />
-      <Route path="/pre-estimations" component={() => <ProtectedRoute component={PreEstimations} />} />
-      <Route path="/quotations" component={() => <ProtectedRoute component={Quotations} />} />
-      <Route path="/tenders" component={() => <ProtectedRoute component={Tenders} />} />
-      <Route path="/dsr-rates" component={() => <ProtectedRoute component={DsrRates} />} />
-      <Route path="/organisations" component={() => <ProtectedRoute component={Organisations} />} />
-      <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
-      <Route component={NotFound} />
-    </Switch>
+    <OnboardingGate>
+      <Switch>
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route path="/join/:token" component={JoinPage} />
+        <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} />} />
+        <Route path="/settings/team" component={() => <ProtectedRoute component={SettingsTeam} />} />
+        <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
+        <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
+        <Route path="/projects/new" component={() => <ProtectedRoute component={ProjectNew} />} />
+        <Route path="/projects/:id" component={() => <ProtectedRoute component={ProjectDetail} />} />
+        <Route path="/dprs/:id" component={() => <ProtectedRoute component={DprDetail} />} />
+        <Route path="/approvals" component={() => <ProtectedRoute component={Approvals} />} />
+        <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
+        <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
+        <Route path="/leads" component={() => <ProtectedRoute component={Leads} />} />
+        <Route path="/customers" component={() => <ProtectedRoute component={Customers} />} />
+        <Route path="/pre-estimations" component={() => <ProtectedRoute component={PreEstimations} />} />
+        <Route path="/quotations" component={() => <ProtectedRoute component={Quotations} />} />
+        <Route path="/tenders" component={() => <ProtectedRoute component={Tenders} />} />
+        <Route path="/dsr-rates" component={() => <ProtectedRoute component={DsrRates} />} />
+        <Route path="/organisations" component={() => <ProtectedRoute component={Organisations} />} />
+        <Route path="/admin" component={() => <ProtectedRoute component={Admin} />} />
+        <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
+        <Route component={NotFound} />
+      </Switch>
+    </OnboardingGate>
   );
 }
 

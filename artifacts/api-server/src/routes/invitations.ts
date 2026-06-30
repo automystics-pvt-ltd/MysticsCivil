@@ -281,18 +281,43 @@ router.post("/invitations/:token/accept", async (req: Request, res: Response) =>
   await db.transaction(async (tx) => {
     let user = (await tx.select().from(usersTable).where(eq(usersTable.email, inv.email)))[0];
 
-    if (!user) {
-      const firstName = body.firstName ? String(body.firstName).trim() : null;
-      const lastName = body.lastName ? String(body.lastName).trim() : null;
-      const password = String(body.password ?? "");
-      if (password.length < 8) {
-        throw Object.assign(new Error("Password must be at least 8 characters"), { status: 400 });
+    const isLoggedIn = req.isAuthenticated();
+
+    if (isLoggedIn) {
+      // AUTHENTICATED PATH: user already has a valid session — verify they are the invitee
+      const sessionUserId = (req.user as { id: string }).id;
+      const [sessionUser] = await tx.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
+      if (!sessionUser || sessionUser.email !== inv.email) {
+        throw Object.assign(
+          new Error("This invitation is for a different email address. Please sign out and use the link from your email."),
+          { status: 403 },
+        );
       }
-      const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-      [user] = await tx
-        .insert(usersTable)
-        .values({ email: inv.email, passwordHash, firstName, lastName })
-        .returning();
+      user = sessionUser;
+    } else {
+      const password = String(body.password ?? "");
+      if (!user) {
+        // NEW ACCOUNT: create with provided credentials
+        const firstName = body.firstName ? String(body.firstName).trim() : null;
+        const lastName = body.lastName ? String(body.lastName).trim() : null;
+        if (password.length < 8) {
+          throw Object.assign(new Error("Password must be at least 8 characters"), { status: 400 });
+        }
+        const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        [user] = await tx
+          .insert(usersTable)
+          .values({ email: inv.email, passwordHash, firstName, lastName })
+          .returning();
+      } else {
+        // EXISTING ACCOUNT: require password verification before joining the org
+        if (password.length < 1) {
+          throw Object.assign(new Error("Enter your password to accept this invitation"), { status: 400 });
+        }
+        const ok = await bcrypt.compare(password, user.passwordHash ?? "");
+        if (!ok) {
+          throw Object.assign(new Error("Incorrect password — please use your existing account password"), { status: 401 });
+        }
+      }
     }
 
     // Upsert profile — if they already have one in another org, just update org + role

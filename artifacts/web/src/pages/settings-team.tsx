@@ -16,7 +16,10 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import {
-  Loader2, UserPlus, MoreHorizontal, Trash2, Shield, Mail, Users, Clock, RefreshCcw,
+  Tooltip, TooltipContent, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Loader2, UserPlus, MoreHorizontal, Trash2, Shield, Mail, Users, Clock, Zap,
 } from "lucide-react";
 import {
   useGetMyProfile,
@@ -83,6 +86,12 @@ export default function SettingsTeam() {
   const [removeTarget, setRemoveTarget] = useState<{ userId: string; name: string } | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
 
+  // Plan limit check: count active members + pending invitations vs planMaxUsers
+  const pendingInvites = (invitations || []).filter((i) => i.status === "pending");
+  const planMaxUsers = profile?.planMaxUsers ?? null;
+  const currentCount = members.length + pendingInvites.length;
+  const atPlanLimit = planMaxUsers !== null && currentCount >= planMaxUsers;
+
   async function handleSendInvite(e: React.FormEvent) {
     e.preventDefault();
     if (!orgId || inviteBusy) return;
@@ -144,7 +153,6 @@ export default function SettingsTeam() {
     }
   }
 
-  const pendingInvites = invitations.filter((i) => i.status === "pending");
   const currentUserId = profile?.userId;
   const isAdminRole = profile?.role === "owner" || profile?.role === "admin";
 
@@ -155,13 +163,37 @@ export default function SettingsTeam() {
           <h1 className="text-2xl font-bold">Team</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Manage your organisation members and invitations.
+            {planMaxUsers !== null && (
+              <span className="ml-2 text-xs">
+                {currentCount} / {planMaxUsers} seats used
+              </span>
+            )}
           </p>
         </div>
         {isAdminRole && (
-          <Button onClick={() => setInviteOpen(true)}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite member
-          </Button>
+          atPlanLimit ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-block">
+                  <Button disabled>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Invite member
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="max-w-xs">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span>You've reached the {planMaxUsers}-seat limit on your current plan. Upgrade to invite more members.</span>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Button onClick={() => setInviteOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite member
+            </Button>
+          )
         )}
       </div>
 

@@ -56,13 +56,13 @@ export type SuccessEnvelope = typeof SuccessEnvelopeValue;
 
 export interface RegisterTenantRequest {
   /** @minLength 1 */
-  companyName: string;
+  orgName: string;
   email: string;
   /** @minLength 8 */
   password: string;
   /** @minLength 1 */
   firstName: string;
-  lastName: string;
+  lastName?: string;
   industry?: string;
 }
 
@@ -280,6 +280,10 @@ export interface MyProfile {
   organisationId: string | null;
   /** @nullable */
   organisationName: string | null;
+  /** @nullable */
+  onboardingCompletedAt: string | null;
+  /** @nullable */
+  planMaxUsers: number | null;
   /** @nullable */
   phone: string | null;
   /** @nullable */

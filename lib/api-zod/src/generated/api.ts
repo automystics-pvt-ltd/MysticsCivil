@@ -143,6 +143,8 @@ export const GetMyProfileResponse = zod.object({
   "profileImageUrl": zod.string().nullable(),
   "organisationId": zod.string().nullable(),
   "organisationName": zod.string().nullable(),
+  "onboardingCompletedAt": zod.coerce.date().nullable(),
+  "planMaxUsers": zod.number().nullable(),
   "phone": zod.string().nullable(),
   "designation": zod.string().nullable()
 })
@@ -164,6 +166,8 @@ export const UpdateMyProfileResponse = zod.object({
   "profileImageUrl": zod.string().nullable(),
   "organisationId": zod.string().nullable(),
   "organisationName": zod.string().nullable(),
+  "onboardingCompletedAt": zod.coerce.date().nullable(),
+  "planMaxUsers": zod.number().nullable(),
   "phone": zod.string().nullable(),
   "designation": zod.string().nullable()
 })
@@ -306,11 +310,11 @@ export const registerTenantBodyPasswordMin = 8;
 
 
 export const RegisterTenantBody = zod.object({
-  "companyName": zod.string().min(1),
+  "orgName": zod.string().min(1),
   "email": zod.string().email(),
   "password": zod.string().min(registerTenantBodyPasswordMin),
   "firstName": zod.string().min(1),
-  "lastName": zod.string(),
+  "lastName": zod.string().optional(),
   "industry": zod.string().optional()
 })
 

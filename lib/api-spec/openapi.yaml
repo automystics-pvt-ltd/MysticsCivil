@@ -3781,7 +3781,7 @@ components:
 
     MyProfile:
       type: object
-      required: [userId, role, firstName, lastName, email, profileImageUrl, organisationId, organisationName, phone, designation]
+      required: [userId, role, firstName, lastName, email, profileImageUrl, organisationId, organisationName, onboardingCompletedAt, planMaxUsers, phone, designation]
       properties:
         userId: { type: string }
         role: { $ref: '#/components/schemas/UserRole' }
@@ -3791,6 +3791,8 @@ components:
         profileImageUrl: { type: [string, 'null'] }
         organisationId: { type: [string, 'null'] }
         organisationName: { type: [string, 'null'] }
+        onboardingCompletedAt: { type: [string, 'null'], format: date-time }
+        planMaxUsers: { type: [integer, 'null'] }
         phone: { type: [string, 'null'] }
         designation: { type: [string, 'null'] }
     MyProfileUpdate:

@@ -23,6 +23,10 @@ export interface MyProfile {
   /** @nullable */
   organisationName: string | null;
   /** @nullable */
+  onboardingCompletedAt: Date | null;
+  /** @nullable */
+  planMaxUsers: number | null;
+  /** @nullable */
   phone: string | null;
   /** @nullable */
   designation: string | null;

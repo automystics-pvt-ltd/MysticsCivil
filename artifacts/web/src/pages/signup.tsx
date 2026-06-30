@@ -14,6 +14,19 @@ const BENEFITS = [
   "Free plan — no credit card required",
 ];
 
+const INDUSTRIES = [
+  "Civil Construction",
+  "Building Construction",
+  "Road & Highway",
+  "Water & Sewage",
+  "Power & Utilities",
+  "Real Estate Developer",
+  "Infrastructure",
+  "Government / PSU",
+  "Consulting / PMC",
+  "Other",
+];
+
 export default function Signup() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -21,6 +34,7 @@ export default function Signup() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [industry, setIndustry] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,6 +54,7 @@ export default function Signup() {
           password,
           firstName: firstName.trim(),
           lastName: lastName.trim() || undefined,
+          industry: industry || undefined,
         }),
       });
       const data = await res.json();
@@ -104,6 +119,22 @@ export default function Signup() {
                 required
                 disabled={busy}
               />
+            </div>
+
+            <div>
+              <Label htmlFor="industry">Industry</Label>
+              <select
+                id="industry"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                className="w-full border rounded-md px-3 py-2 text-sm bg-background mt-1 h-10"
+                disabled={busy}
+              >
+                <option value="">Select your industry (optional)</option>
+                {INDUSTRIES.map((ind) => (
+                  <option key={ind} value={ind}>{ind}</option>
+                ))}
+              </select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

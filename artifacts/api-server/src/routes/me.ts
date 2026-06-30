@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, userProfilesTable, organisationsTable, usersTable } from "@workspace/db";
+import { db, userProfilesTable, organisationsTable, usersTable, tenantSubscriptionsTable, subscriptionPlansTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -23,13 +23,35 @@ async function buildProfile(userId: string) {
   const profile = await ensureProfile(userId);
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   let orgName: string | null = null;
+  let onboardingCompletedAt: string | null = null;
+  let planMaxUsers: number | null = null;
+
   if (profile.organisationId) {
     const [org] = await db
       .select()
       .from(organisationsTable)
       .where(eq(organisationsTable.id, profile.organisationId));
     orgName = org?.name ?? null;
+    onboardingCompletedAt = org?.onboardingCompletedAt?.toISOString() ?? null;
+
+    // Get plan limits from active subscription
+    const [sub] = await db
+      .select({
+        limits: subscriptionPlansTable.limits,
+        limitsOverride: tenantSubscriptionsTable.limitsOverride,
+      })
+      .from(tenantSubscriptionsTable)
+      .innerJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, tenantSubscriptionsTable.planId))
+      .where(eq(tenantSubscriptionsTable.organisationId, profile.organisationId))
+      .limit(1);
+
+    if (sub) {
+      const override = sub.limitsOverride?.maxUsers;
+      const base = sub.limits?.maxUsers ?? null;
+      planMaxUsers = typeof override === "number" ? override : base;
+    }
   }
+
   return {
     userId,
     role: profile.role,
@@ -39,6 +61,8 @@ async function buildProfile(userId: string) {
     profileImageUrl: user?.profileImageUrl ?? null,
     organisationId: profile.organisationId ?? null,
     organisationName: orgName,
+    onboardingCompletedAt,
+    planMaxUsers,
     phone: profile.phone ?? null,
     designation: profile.designation ?? null,
   };
