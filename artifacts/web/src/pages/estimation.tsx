@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useParams } from "wouter";
 import {
   useListProjectEstimates,
@@ -470,6 +471,7 @@ function BoqPanel({ estimate }: { estimate: Estimate }) {
   const deleteItem = useDeleteBoqItem();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
 
   const { data: dsrResults = [] } = useListDsrRates(
     { q: dsrSearch, trade: newRow?.trade },
@@ -497,7 +499,8 @@ function BoqPanel({ estimate }: { estimate: Estimate }) {
     );
   };
 
-  const confirmDelete = (itemId: string) => {
+  const confirmDelete = async (itemId: string) => {
+    if (!(await askConfirm({ title: "Delete BOQ item?", description: "This item will be permanently removed from the BOQ.", destructive: true }))) return;
     deleteItem.mutate(
       { itemId },
       {
@@ -703,6 +706,7 @@ function BoqPanel({ estimate }: { estimate: Estimate }) {
       ))}
 
       {raItem && <RateAnalysisModal item={raItem} onClose={() => setRaItem(null)} />}
+      {confirmDialog}
     </div>
   );
 }

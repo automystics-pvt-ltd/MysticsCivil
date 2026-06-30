@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   useListDsrRates,
   useCreateDsrRate,
@@ -156,6 +157,7 @@ function RateRow({ rate, canDelete }: { rate: DsrRate; canDelete: boolean }) {
   const deleteRate = useDeleteDsrRate();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
 
   const save = () => {
     updateRate.mutate(
@@ -167,8 +169,8 @@ function RateRow({ rate, canDelete }: { rate: DsrRate; canDelete: boolean }) {
     );
   };
 
-  const remove = () => {
-    if (!confirm(`Delete rate ${rate.code}?`)) return;
+  const remove = async () => {
+    if (!(await askConfirm({ title: `Delete rate ${rate.code}?`, description: "This DSR rate will be permanently deleted.", destructive: true }))) return;
     deleteRate.mutate(
       { rateId: rate.id },
       {
@@ -179,7 +181,9 @@ function RateRow({ rate, canDelete }: { rate: DsrRate; canDelete: boolean }) {
   };
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/30 group">
+    <>
+      {confirmDialog}
+      <tr className="border-b last:border-0 hover:bg-muted/30 group">
       <td className="py-2 px-2 text-xs font-mono text-muted-foreground">{rate.code}</td>
       <td className="py-2 px-2 text-sm">{rate.description}</td>
       <td className="py-2 px-2"><Badge variant="outline" className="text-[10px]">{rate.trade}</Badge></td>
@@ -211,7 +215,8 @@ function RateRow({ rate, canDelete }: { rate: DsrRate; canDelete: boolean }) {
           )}
         </div>
       </td>
-    </tr>
+      </tr>
+    </>
   );
 }
 
@@ -529,6 +534,7 @@ function SourceRow({ src }: { src: RateSource }) {
   const del = useDeleteRateSource();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
 
   const doSync = () => {
     sync.mutate({ id: src.id }, {
@@ -543,8 +549,8 @@ function SourceRow({ src }: { src: RateSource }) {
     });
   };
 
-  const remove = () => {
-    if (!confirm(`Delete source "${src.label}"?`)) return;
+  const remove = async () => {
+    if (!(await askConfirm({ title: `Delete "${src.label}"?`, description: "The source will be removed. Imported rates will remain.", destructive: true }))) return;
     del.mutate({ id: src.id }, {
       onSuccess: () => { qc.invalidateQueries({ queryKey: getListRateSourcesQueryKey() }); toast({ title: "Source deleted" }); },
       onError: (e: any) => toast({ title: "Error", description: e?.message, variant: "destructive" }),
@@ -552,7 +558,9 @@ function SourceRow({ src }: { src: RateSource }) {
   };
 
   return (
-    <tr className="border-b last:border-0 hover:bg-muted/30">
+    <>
+      {confirmDialog}
+      <tr className="border-b last:border-0 hover:bg-muted/30">
       <td className="py-2 px-2">
         <div className="text-sm font-medium">{src.label}</div>
         {src.url && <div className="text-[10px] text-muted-foreground truncate max-w-[280px]">{src.url}</div>}
@@ -581,7 +589,8 @@ function SourceRow({ src }: { src: RateSource }) {
           </Button>
         </div>
       </td>
-    </tr>
+      </tr>
+    </>
   );
 }
 

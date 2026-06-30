@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const api = (path: string) => `${BASE}/api${path}`;
@@ -52,6 +53,7 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
 
   const { data: leads = [] } = useQuery({
     queryKey: ["leads", stageFilter],
@@ -184,7 +186,7 @@ export default function LeadsPage() {
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" onClick={() => openEdit(lead)}><Edit2 className="h-3.5 w-3.5" /></Button>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => deleteLead(lead.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={async () => { if (!(await askConfirm({ title: "Delete lead?", description: `"${lead.title}" will be permanently removed.`, destructive: true }))) return; deleteLead(lead.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
               </div>
             </CardContent>
@@ -192,6 +194,7 @@ export default function LeadsPage() {
         ))}
       </div>
 
+      {confirmDialog}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editing ? "Edit Lead" : "New Lead"}</DialogTitle></DialogHeader>

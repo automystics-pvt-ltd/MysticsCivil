@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useConfirm } from "@/hooks/use-confirm";
 import { formatINR } from "@/lib/ocms-format";
 import { Plus, ChevronRight, TrendingUp, TrendingDown, Clock, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import {
@@ -91,6 +92,7 @@ function VoCard({ vo, projectId }: { vo: VariationOrder; projectId: string }) {
   const updateVo = useUpdateVariationOrder();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const cfg = STATUS_CONFIG[vo.status] ?? STATUS_CONFIG.draft;
   const Icon = cfg.icon;
 
@@ -105,7 +107,9 @@ function VoCard({ vo, projectId }: { vo: VariationOrder; projectId: string }) {
   };
 
   return (
-    <Card className="hover:border-primary/40 transition-colors">
+    <>
+      {confirmDialog}
+      <Card className="hover:border-primary/40 transition-colors">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -143,18 +147,19 @@ function VoCard({ vo, projectId }: { vo: VariationOrder; projectId: string }) {
           </div>
           <div className="flex gap-1">
             {vo.status === "draft" && (
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => changeStatus("submitted")}>Submit for Review</Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { if (!(await askConfirm({ title: "Submit VO for review?", description: "The variation order will be sent to approvers.", confirmLabel: "Submit" }))) return; changeStatus("submitted"); }}>Submit for Review</Button>
             )}
             {vo.status === "submitted" && (
               <>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700 border-emerald-300" onClick={() => changeStatus("approved")}>Approve</Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600 border-rose-300" onClick={() => changeStatus("rejected")}>Reject</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700 border-emerald-300" onClick={async () => { if (!(await askConfirm({ title: "Approve this variation order?", description: `${vo.voNumber} — ${vo.title}`, confirmLabel: "Approve" }))) return; changeStatus("approved"); }}>Approve</Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs text-rose-600 border-rose-300" onClick={async () => { if (!(await askConfirm({ title: "Reject this variation order?", description: `${vo.voNumber} — ${vo.title}`, confirmLabel: "Reject", destructive: true }))) return; changeStatus("rejected"); }}>Reject</Button>
               </>
             )}
           </div>
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }
 

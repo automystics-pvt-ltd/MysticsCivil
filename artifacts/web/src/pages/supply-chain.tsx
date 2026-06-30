@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useConfirm } from "@/hooks/use-confirm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 function VendorsTab({ projectId }: { projectId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", code: "", contactPerson: "", email: "", phone: "", city: "", state: "", gstNumber: "", pan: "" });
 
@@ -163,7 +165,7 @@ function VendorsTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-center"><StatusBadge status={v.status} /></td>
                     <td className="px-4 py-3 text-right space-x-2">
                       {v.status === "pending_approval" && (
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => approveVendor.mutate(v.id)}>Approve</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { if (!(await askConfirm({ title: "Approve vendor?", description: `"${v.name}" will be added to the active vendor list.`, confirmLabel: "Approve" }))) return; approveVendor.mutate(v.id); }}>Approve</Button>
                       )}
                       {v.status === "active" && !avlVendorIds.has(v.id) && (
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => addToAvl.mutate(v.id)}>+ AVL</Button>
@@ -178,6 +180,7 @@ function VendorsTab({ projectId }: { projectId: string }) {
           </div>
         </CardContent>
       </Card>
+      {confirmDialog}
     </div>
   );
 }
@@ -360,6 +363,7 @@ function InventoryTab({ projectId }: { projectId: string }) {
 function IndentsTab({ projectId }: { projectId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [detailIndent, setDetailIndent] = useState<MaterialIndent | null>(null);
   const [filterStatus, setFilterStatus] = useState("all");
@@ -448,7 +452,7 @@ function IndentsTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-center"><StatusBadge status={indent.status} /></td>
                     <td className="px-4 py-3 text-right space-x-1">
                       {indent.status === "draft" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => submitIndent.mutate(indent.id)}>Submit</Button>}
-                      {indent.status === "submitted" && <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700" onClick={() => approveIndent.mutate(indent.id)}>Approve</Button>}
+                      {indent.status === "submitted" && <Button size="sm" variant="outline" className="h-7 text-xs text-emerald-700" onClick={async () => { if (!(await askConfirm({ title: "Approve indent?", description: `Indent ${indent.indentNumber} will be approved for procurement.`, confirmLabel: "Approve" }))) return; approveIndent.mutate(indent.id); }}>Approve</Button>}
                     </td>
                   </tr>
                 ))}
@@ -490,6 +494,7 @@ function IndentsTab({ projectId }: { projectId: string }) {
           </CardContent>
         </Card>
       )}
+      {confirmDialog}
     </div>
   );
 }
@@ -498,6 +503,7 @@ function IndentsTab({ projectId }: { projectId: string }) {
 function PurchaseOrdersTab({ projectId }: { projectId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [selectedPo, setSelectedPo] = useState<PurchaseOrder | null>(null);
   const [form, setForm] = useState({ poNumber: "", vendorId: "", deliveryLocation: "", deliveryDeadline: "", paymentTerms: "", notes: "" });
@@ -593,7 +599,7 @@ function PurchaseOrdersTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-right font-semibold">₹{fmt(po.grandTotal)}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={po.status} /></td>
                     <td className="px-4 py-3 text-right">
-                      {po.status === "draft" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => approvePo.mutate(po.id)}>Approve</Button>}
+                      {po.status === "draft" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { if (!(await askConfirm({ title: "Approve purchase order?", description: `${po.poNumber} — grand total ₹${fmt(po.grandTotal)}`, confirmLabel: "Approve" }))) return; approvePo.mutate(po.id); }}>Approve</Button>}
                     </td>
                   </tr>
                 ))}
@@ -638,6 +644,7 @@ function PurchaseOrdersTab({ projectId }: { projectId: string }) {
           </CardContent>
         </Card>
       )}
+      {confirmDialog}
     </div>
   );
 }
@@ -646,6 +653,7 @@ function PurchaseOrdersTab({ projectId }: { projectId: string }) {
 function GrnTab({ projectId }: { projectId: string }) {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [selectedGrn, setSelectedGrn] = useState<Grn | null>(null);
   const [form, setForm] = useState({ grnNumber: "", poId: "", vendorId: "", vehicleNumber: "", dcNumber: "", invoiceNumber: "" });
@@ -762,7 +770,7 @@ function GrnTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-center">{grn.qcHoldCount > 0 ? <span className="text-amber-600 font-medium">{grn.qcHoldCount}</span> : <span className="text-muted-foreground">0</span>}</td>
                     <td className="px-4 py-3 text-center"><StatusBadge status={grn.status} /></td>
                     <td className="px-4 py-3 text-right">
-                      {grn.status === "draft" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => submitGrn.mutate(grn.id)}>Submit & Update Stock</Button>}
+                      {grn.status === "draft" && <Button size="sm" variant="outline" className="h-7 text-xs" onClick={async () => { if (!(await askConfirm({ title: "Submit GRN & update stock?", description: `GRN ${grn.grnNumber} will be submitted and inventory stock levels will be updated. This cannot be undone.`, confirmLabel: "Submit & Update" }))) return; submitGrn.mutate(grn.id); }}>Submit & Update Stock</Button>}
                     </td>
                   </tr>
                 ))}
@@ -847,6 +855,7 @@ function GrnTab({ projectId }: { projectId: string }) {
           )}
         </Card>
       )}
+      {confirmDialog}
     </div>
   );
 }

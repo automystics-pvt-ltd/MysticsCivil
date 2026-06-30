@@ -1,5 +1,6 @@
 import { useParams, Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   useGetDpr,
   useSubmitDpr,
@@ -26,6 +27,7 @@ export default function DprDetail() {
   const { data: profile } = useGetMyProfile();
   const submit = useSubmitDpr();
   const approve = useApproveDpr();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
 
   if (isLoading || !data) {
     return <div className="text-sm text-muted-foreground">Loading DPR…</div>;
@@ -60,16 +62,16 @@ export default function DprDetail() {
         </div>
         <div className="flex gap-2">
           {canSubmit && (
-            <Button size="sm" onClick={() => submit.mutate({ dprId: id }, { onSuccess: invalidate })} disabled={submit.isPending}>
+            <Button size="sm" onClick={async () => { if (!(await askConfirm({ title: "Submit DPR for approval?", description: "The report will be locked for editing and sent to the approver.", confirmLabel: "Submit" }))) return; submit.mutate({ dprId: id }, { onSuccess: invalidate }); }} disabled={submit.isPending}>
               <Send className="h-4 w-4 mr-1" /> Submit for Approval
             </Button>
           )}
           {canApprove && (
             <>
-              <Button size="sm" variant="outline" onClick={() => approve.mutate({ dprId: id, data: { approve: false, rejectionReason: "Insufficient data" } }, { onSuccess: invalidate })}>
+              <Button size="sm" variant="outline" onClick={async () => { if (!(await askConfirm({ title: "Reject this DPR?", description: "The DPR will be sent back to the submitter.", confirmLabel: "Reject", destructive: true }))) return; approve.mutate({ dprId: id, data: { approve: false, rejectionReason: "Insufficient data" } }, { onSuccess: invalidate }); }}>
                 <X className="h-4 w-4 mr-1" /> Reject
               </Button>
-              <Button size="sm" onClick={() => approve.mutate({ dprId: id, data: { approve: true } }, { onSuccess: invalidate })}>
+              <Button size="sm" onClick={async () => { if (!(await askConfirm({ title: "Approve this DPR?", description: "The DPR will be marked as approved.", confirmLabel: "Approve" }))) return; approve.mutate({ dprId: id, data: { approve: true } }, { onSuccess: invalidate }); }}>
                 <Check className="h-4 w-4 mr-1" /> Approve
               </Button>
             </>
@@ -159,6 +161,7 @@ export default function DprDetail() {
           <CardContent><p className="text-sm">{dpr.rejectionReason}</p></CardContent>
         </Card>
       )}
+      {confirmDialog}
     </div>
   );
 }

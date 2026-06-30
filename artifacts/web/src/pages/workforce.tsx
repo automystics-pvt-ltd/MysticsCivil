@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -185,6 +186,7 @@ function WorkersTab({ projectId }: { projectId: string }) {
 function AttendanceTab({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({ attendanceDate: new Date().toISOString().slice(0, 10) });
   const f = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -230,7 +232,7 @@ function AttendanceTab({ projectId }: { projectId: string }) {
                       <span className="text-sm font-medium">{w?.name ?? "Worker"}</span>
                       <span className="text-xs text-muted-foreground ml-2">{fmtDate(r.attendanceDate)} · {r.overtimeHours}h OT</span>
                     </div>
-                    <Button size="sm" variant="outline" className="text-orange-700 border-orange-300 hover:bg-orange-100" disabled={approveOt.isPending} onClick={() => approveOt.mutate(r.id)}>
+                    <Button size="sm" variant="outline" className="text-orange-700 border-orange-300 hover:bg-orange-100" disabled={approveOt.isPending} onClick={async () => { if (!(await askConfirm({ title: "Approve overtime?", description: `${r.overtimeHours}h OT for ${w?.name ?? "this worker"} on ${fmtDate(r.attendanceDate)}.`, confirmLabel: "Approve" }))) return; approveOt.mutate(r.id); }}>
                       <CheckCircle className="h-3 w-3 mr-1" />Approve
                     </Button>
                   </div>
@@ -240,6 +242,7 @@ function AttendanceTab({ projectId }: { projectId: string }) {
           </CardContent>
         </Card>
       )}
+      {confirmDialog}
       <div className="flex justify-between items-center">
         <h3 className="font-semibold">Attendance Register</h3>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -424,6 +427,7 @@ function PayrollTab({ projectId }: { projectId: string }) {
 function ItpTab({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<any>(null);
@@ -469,7 +473,7 @@ function ItpTab({ projectId }: { projectId: string }) {
               <div className="flex justify-between items-center mt-1">
                 <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusBadge(itp.status)}`}>{itp.status}</span>
                 {itp.status === "draft" && (
-                  <Button size="sm" variant="outline" onClick={e => { e.stopPropagation(); approveMut.mutate(itp.id); }} disabled={approveMut.isPending}>Approve</Button>
+                  <Button size="sm" variant="outline" onClick={async e => { e.stopPropagation(); if (!(await askConfirm({ title: "Approve ITP?", description: `"${itp.title}" will be marked as approved.`, confirmLabel: "Approve" }))) return; approveMut.mutate(itp.id); }} disabled={approveMut.isPending}>Approve</Button>
                 )}
               </div>
             </CardContent>
@@ -501,6 +505,7 @@ function ItpTab({ projectId }: { projectId: string }) {
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm border rounded-lg p-8">Select an ITP to view checkpoints</div>
         )}
       </div>
+      {confirmDialog}
     </div>
   );
 }
@@ -940,6 +945,7 @@ function HiraTab({ projectId }: { projectId: string }) {
 function IncidentsTab({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({ incidentDate: new Date().toISOString().slice(0,10), classification: "near_miss" });
   const f = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
@@ -1015,7 +1021,7 @@ function IncidentsTab({ projectId }: { projectId: string }) {
                     {inc.lostDays > 0 && <div className="text-xs text-red-600 mt-0.5">Lost Days: {inc.lostDays}</div>}
                   </div>
                   {inc.status === "open" && (
-                    <Button size="sm" variant="outline" onClick={() => closeInc.mutate(inc.id)} disabled={closeInc.isPending}>Close</Button>
+                    <Button size="sm" variant="outline" onClick={async () => { if (!(await askConfirm({ title: "Close this incident?", description: "The incident will be marked as closed and no further updates can be made.", confirmLabel: "Close" }))) return; closeInc.mutate(inc.id); }} disabled={closeInc.isPending}>Close</Button>
                   )}
                 </div>
               </CardContent>
@@ -1023,6 +1029,7 @@ function IncidentsTab({ projectId }: { projectId: string }) {
           ))}
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }
