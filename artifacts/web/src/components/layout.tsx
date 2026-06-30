@@ -716,24 +716,34 @@ function TopHeader({
 
   return (
     <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
-      <div className="flex items-center gap-3 px-4 md:px-6 py-3">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
+
+        {/* Mobile hamburger */}
         <button
           onClick={onOpenMobile}
-          className="md:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center"
+          className="md:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center flex-shrink-0 text-muted-foreground hover:text-foreground transition"
+          aria-label="Open navigation"
           data-testid="mobile-open"
         >
           <Menu className="h-4 w-4" />
         </button>
+
+        {/* Desktop sidebar collapse toggle */}
         <button
           onClick={onToggleSidebar}
-          className="hidden md:flex h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 items-center justify-center text-muted-foreground hover:text-foreground transition"
+          className="hidden md:flex h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 items-center justify-center text-muted-foreground hover:text-foreground transition flex-shrink-0"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           data-testid="sidebar-toggle"
         >
           <ChevronsLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
         </button>
 
-        <form role="search" className="flex-1 max-w-xl relative" onSubmit={(e) => e.preventDefault()}>
+        {/* Search bar — hidden on xs, full bar on sm+ */}
+        <form
+          role="search"
+          className="hidden sm:flex flex-1 min-w-0 max-w-xl relative"
+          onSubmit={(e) => e.preventDefault()}
+        >
           <label htmlFor="header-search" className="sr-only">Search projects, DPRs and RA bills</label>
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-foreground/60 pointer-events-none" />
           <input
@@ -746,37 +756,82 @@ function TopHeader({
           />
         </form>
 
-        <div className="flex items-center gap-2">
+        {/* Mobile: push right-side controls to the far right */}
+        <div className="flex-1 sm:hidden" aria-hidden />
+
+        {/* ── Right toolbar (always flex-shrink-0, no overflow) ── */}
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+
+          {/* Search icon — mobile only */}
+          <button
+            className="sm:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition"
+            aria-label="Search"
+            onClick={() => {
+              const el = document.getElementById("header-search");
+              if (el) { (el as HTMLInputElement).focus(); }
+            }}
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
           <LangSwitcher compact />
+
           <button
             onClick={toggle}
             className="h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition"
-            title={dark ? "Light mode" : "Dark mode"}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
             data-testid="theme-toggle"
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
+
           <NotificationBell role={profile?.role} enabledModules={enabledModules} />
 
-          {profile && (
-            <div className="hidden sm:flex items-center gap-2.5 pl-1.5 pr-3.5 py-1 rounded-full bg-muted hover:bg-muted/80 transition" data-testid="user-chip">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[13px] font-extrabold ring-2 ring-background">
-                {initials}
-              </div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-[13px] font-bold text-foreground">{profile.firstName} {profile.lastName}</span>
-                <span className="text-[11px] text-muted-foreground capitalize font-semibold">{profile.role}</span>
-              </div>
-            </div>
-          )}
-          <button
-            onClick={onLogout}
-            className="h-9 w-9 rounded-xl bg-muted hover:bg-rose-50 dark:hover:bg-rose-950 hover:text-rose-600 flex items-center justify-center text-muted-foreground transition"
-            title={t("nav.logout")}
-            data-testid="btn-logout"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          {/* ── User menu (avatar + name + logout in a dropdown) ── */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-muted transition ml-0.5"
+                aria-label="User menu"
+                data-testid="user-menu-trigger"
+              >
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[13px] font-extrabold ring-2 ring-background flex-shrink-0">
+                  {initials}
+                </div>
+                {profile && (
+                  <div className="hidden md:flex flex-col leading-tight text-left min-w-0 max-w-[120px]">
+                    <span className="text-[13px] font-bold text-foreground truncate">{profile.firstName} {profile.lastName}</span>
+                    <span className="text-[11px] text-muted-foreground capitalize font-semibold">{profile.role}</span>
+                  </div>
+                )}
+                <ChevronDown className="hidden md:block h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" sideOffset={6} className="w-52 p-1.5">
+              {profile && (
+                <div className="px-3 py-2 mb-1 border-b border-border">
+                  <div className="text-sm font-semibold truncate">{profile.firstName} {profile.lastName}</div>
+                  <div className="text-[11px] text-muted-foreground capitalize mt-0.5">{profile.role}</div>
+                </div>
+              )}
+              <Link
+                href="/profile"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm hover:bg-muted transition no-underline text-foreground"
+              >
+                <Settings className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                Profile &amp; Settings
+              </Link>
+              <div className="border-t border-border my-1" />
+              <button
+                onClick={onLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition"
+                data-testid="btn-logout"
+              >
+                <LogOut className="h-4 w-4 flex-shrink-0" />
+                {t("nav.logout")}
+              </button>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </header>
