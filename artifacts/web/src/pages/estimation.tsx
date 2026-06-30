@@ -24,7 +24,10 @@ import {
   getListRateAnalysisComponentsQueryKey,
   getListWorkOrdersQueryKey,
   getListWorkOrderItemsQueryKey,
+  useGetMyProfile,
+  useGetOrgSubscription,
 } from "@workspace/api-client-react";
+import { FeatureGate } from "@/components/feature-gate";
 import type { Estimate, EstimateCostHead, BoqItem } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -452,6 +455,11 @@ function L1Panel({ estimate }: { estimate: Estimate }) {
 
 function BoqPanel({ estimate }: { estimate: Estimate }) {
   const { data: items = [], isLoading } = useListBoqItems(estimate.id);
+  const { data: profile } = useGetMyProfile();
+  const orgId = profile?.organisationId ?? "";
+  const { data: subData } = useGetOrgSubscription(orgId, { query: { enabled: !!orgId } } as any);
+  const planFeatures = (subData?.plan?.features ?? {}) as Record<string, boolean | string>;
+  const hasAdvancedEstimations = planFeatures.advanced_estimations === true || planFeatures.advanced_estimations === "true";
   const [newRow, setNewRow] = useState<any>(null);
   const [raItem, setRaItem] = useState<BoqItem | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -551,16 +559,20 @@ function BoqPanel({ estimate }: { estimate: Estimate }) {
           {locked && <span className="ml-2 inline-flex items-center gap-1 text-rose-600 text-xs"><Lock className="h-3 w-3" />Locked — VO required to modify scope</span>}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5 mr-1" /> Export Excel
-          </Button>
+          <FeatureGate hasAccess={hasAdvancedEstimations} featureName="BOQ Excel Export" planRequired="Professional">
+            <Button size="sm" variant="outline" onClick={handleExport}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Export Excel
+            </Button>
+          </FeatureGate>
           {!locked && (
-            <label>
-              <input type="file" accept=".xlsx" className="sr-only" onChange={handleImport} />
-              <Button size="sm" variant="outline" asChild>
-                <span className="cursor-pointer"><Upload className="h-3.5 w-3.5 mr-1" /> Import Excel</span>
-              </Button>
-            </label>
+            <FeatureGate hasAccess={hasAdvancedEstimations} featureName="BOQ Excel Import" planRequired="Professional">
+              <label>
+                <input type="file" accept=".xlsx" className="sr-only" onChange={handleImport} />
+                <Button size="sm" variant="outline" asChild>
+                  <span className="cursor-pointer"><Upload className="h-3.5 w-3.5 mr-1" /> Import Excel</span>
+                </Button>
+              </label>
+            </FeatureGate>
           )}
           {!locked && (
             <Button size="sm" variant="outline" onClick={() => setNewRow({ trade: TRADES[0], description: "", unit: "sqm", quantity: "0", rate: "0", hsnCode: "", gstRate: "18" })}>

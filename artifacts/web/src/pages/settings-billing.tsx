@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { useGetMyProfile, useGetOrgSubscription, getGetOrgSubscriptionQueryKey } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { UpgradePromptModal } from "@/components/upgrade-prompt-modal";
-import { Zap, CheckCircle2, XCircle, RefreshCw, CreditCard, Users, FolderOpen, HardDrive } from "lucide-react";
+import { Zap, CheckCircle2, XCircle, RefreshCw, CreditCard, Users, FolderOpen, HardDrive, Minus } from "lucide-react";
+
+const API_BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+async function fetchPlans() {
+  const r = await fetch(`${API_BASE}/api/subscription-plans`);
+  if (!r.ok) throw new Error("Failed to fetch plans");
+  return r.json() as Promise<Array<{ id: string; name: string; priceMonthly: string | null; features: Record<string, boolean | string> | null }>>;
+}
 
 function QuotaBar({ label, used, max, icon }: { label: string; used: number; max: number | null; icon: React.ReactNode }) {
   const pct = max !== null && max > 0 ? Math.min(100, Math.round((used / max) * 100)) : 0;
@@ -57,7 +64,13 @@ export default function SettingsBilling() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const { data, isLoading, refetch } = useGetOrgSubscription(orgId, {
-    query: { enabled: !!orgId } as any,
+    query: { enabled: !!orgId, refetchInterval: 30000 } as any,
+  });
+
+  const { data: allPlans = [] } = useQuery({
+    queryKey: ["subscription-plans-catalogue"],
+    queryFn: fetchPlans,
+    staleTime: 5 * 60 * 1000,
   });
 
   const plan = data?.plan;
@@ -176,36 +189,73 @@ export default function SettingsBilling() {
         </CardContent>
       </Card>
 
-      {featureEntries.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Features included in {plan.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y">
-              {featureEntries.map(([key, val]) => {
-                const isEnabled = val === true || val === "true" || val === "enabled";
-                const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-                return (
-                  <div key={key} className="flex items-center justify-between py-2.5 text-sm">
-                    <span className="font-medium">{label}</span>
-                    {isEnabled ? (
-                      <CheckCircle2 className="h-4 w-4 text-primary" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-muted-foreground/40" />
-                    )}
-                  </div>
-                );
-              })}
-              {featureEntries.length === 0 && (
-                <p className="py-4 text-sm text-muted-foreground text-center">
-                  Feature details not available for this plan.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Plan comparison matrix */}
+      {allPlans.length > 0 && (() => {
+        const allFeatureKeys = Array.from(
+          new Set(allPlans.flatMap((p) => Object.keys(p.features ?? {})))
+        ).sort();
+        const currentPlanId = plan?.id;
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Plan Comparison</CardTitle>
+              <CardDescription>See what's included across all plans.</CardDescription>
+            </CardHeader>
+            <CardContent className="overflow-x-auto p-0">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-1/3">Feature</th>
+                    {allPlans.map((p) => (
+                      <th key={p.id} className={`text-center px-3 py-2.5 font-semibold ${p.id === currentPlanId ? "text-primary" : "text-muted-foreground"}`}>
+                        <div>{p.name}</div>
+                        {p.id === currentPlanId && (
+                          <Badge variant="default" className="text-[10px] mt-0.5">Current</Badge>
+                        )}
+                        {p.priceMonthly && Number(p.priceMonthly) > 0 ? (
+                          <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                            ₹{Number(p.priceMonthly).toLocaleString("en-IN")}/mo
+                          </div>
+                        ) : (
+                          <div className="text-xs font-normal text-muted-foreground mt-0.5">Free</div>
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {allFeatureKeys.map((key) => {
+                    const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                    return (
+                      <tr key={key} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-2.5 font-medium">{label}</td>
+                        {allPlans.map((p) => {
+                          const val = (p.features ?? {})[key];
+                          const isIncluded = val === true || val === "true" || val === "enabled";
+                          const isExcluded = val === false || val === "false" || val === "disabled";
+                          return (
+                            <td key={p.id} className={`text-center px-3 py-2.5 ${p.id === currentPlanId ? "bg-primary/5" : ""}`}>
+                              {isIncluded ? (
+                                <CheckCircle2 className="h-4 w-4 text-primary mx-auto" />
+                              ) : isExcluded ? (
+                                <XCircle className="h-4 w-4 text-muted-foreground/30 mx-auto" />
+                              ) : val !== undefined ? (
+                                <span className="text-xs text-muted-foreground">{String(val)}</span>
+                              ) : (
+                                <Minus className="h-4 w-4 text-muted-foreground/20 mx-auto" />
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <UpgradePromptModal
         open={upgradeOpen}

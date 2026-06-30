@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { formatINR } from "@/lib/ocms-format";
 import { useToast } from "@/hooks/use-toast";
+import { useGetMyProfile, useGetOrgSubscription } from "@workspace/api-client-react";
+import { FeatureGate } from "@/components/feature-gate";
 
 // ─── Status Config ─────────────────────────────────────────────────────────
 const BILL_STEPS = [
@@ -406,6 +408,12 @@ export default function FinancialPage({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const refresh = (key: string) => qc.invalidateQueries({ queryKey: [key, projectId] });
 
+  const { data: profile } = useGetMyProfile();
+  const orgId = profile?.organisationId ?? "";
+  const { data: subData } = useGetOrgSubscription(orgId, { query: { enabled: !!orgId } } as any);
+  const planFeatures = (subData?.plan?.features ?? {}) as Record<string, boolean | string>;
+  const hasFinancialAnalytics = planFeatures.financial_analytics === true || planFeatures.financial_analytics === "true";
+
   const { data: bills = [], isLoading: billsLoading } = useQuery({
     queryKey: ["contractor-bills", projectId],
     queryFn: () => apiFetch(`/projects/${projectId}/contractor-bills`),
@@ -559,7 +567,7 @@ export default function FinancialPage({ projectId }: { projectId: string }) {
         {/* ── ANALYTICS ──────────────────────────────────────────────────── */}
         <TabsContent value="analytics" className="space-y-4">
           <h2 className="text-lg font-semibold">Payment Analytics</h2>
-
+          <FeatureGate hasAccess={hasFinancialAnalytics} featureName="Payment Analytics" planRequired="Professional">
           {analytics ? (
             <>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -611,12 +619,13 @@ export default function FinancialPage({ projectId }: { projectId: string }) {
           ) : (
             <div className="text-center py-12 text-muted-foreground">Loading analytics…</div>
           )}
+          </FeatureGate>
         </TabsContent>
 
         {/* ── REPORTS ────────────────────────────────────────────────────── */}
         <TabsContent value="reports" className="space-y-4">
           <h2 className="text-lg font-semibold">Financial Summary</h2>
-
+          <FeatureGate hasAccess={hasFinancialAnalytics} featureName="Financial Reports" planRequired="Professional">
           {summary ? (
             <>
               {/* P&L */}
@@ -699,6 +708,7 @@ export default function FinancialPage({ projectId }: { projectId: string }) {
           ) : (
             <div className="text-center py-12 text-muted-foreground">Loading financial summary…</div>
           )}
+          </FeatureGate>
         </TabsContent>
 
         {/* ── LEDGER ─────────────────────────────────────────────────────── */}
