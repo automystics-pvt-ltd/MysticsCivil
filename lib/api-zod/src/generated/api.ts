@@ -428,6 +428,7 @@ export const ListOrgMembersResponseItem = zod.object({
   "lastName": zod.string().nullish(),
   "profileImageUrl": zod.string().nullish(),
   "role": zod.string(),
+  "customRoleId": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "designation": zod.string().nullish(),
   "joinedAt": zod.coerce.date()
@@ -444,7 +445,8 @@ export const UpdateOrgMemberRoleParams = zod.object({
 })
 
 export const UpdateOrgMemberRoleBody = zod.object({
-  "role": zod.enum(['owner', 'pm', 'site_engineer', 'qs', 'finance', 'contractor', 'qc', 'store', 'hr', 'admin'])
+  "role": zod.enum(['owner', 'pm', 'site_engineer', 'qs', 'finance', 'contractor', 'qc', 'store', 'hr', 'admin']),
+  "customRoleId": zod.string().nullish()
 })
 
 export const UpdateOrgMemberRoleResponse = zod.object({
@@ -474,6 +476,120 @@ export const CompleteOrgOnboardingParams = zod.object({
 
 export const CompleteOrgOnboardingResponse = zod.object({
   "success": zod.boolean()
+})
+
+
+/**
+ * @summary Current subscription plan + usage for the org
+ */
+export const GetOrgSubscriptionParams = zod.object({
+  "organisationId": zod.coerce.string()
+})
+
+export const GetOrgSubscriptionResponse = zod.object({
+  "subscription": zod.object({
+  "id": zod.string().optional(),
+  "status": zod.string().optional(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "currentPeriodStart": zod.coerce.date().nullish(),
+  "currentPeriodEnd": zod.coerce.date().nullish(),
+  "daysRemaining": zod.number().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "limitsOverride": zod.unknown().optional(),
+  "updatedAt": zod.coerce.date().nullish()
+}).nullish(),
+  "plan": zod.object({
+  "id": zod.string().optional(),
+  "slug": zod.string().optional(),
+  "name": zod.string().optional(),
+  "priceMonthly": zod.number().nullish(),
+  "limits": zod.unknown().optional(),
+  "effectiveLimits": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}).optional(),
+  "features": zod.unknown().optional()
+}).nullish(),
+  "usage": zod.object({
+  "projectCount": zod.number().optional(),
+  "userCount": zod.number().optional()
+}).nullish()
+})
+
+
+/**
+ * @summary Return the full capability catalog (grouped)
+ */
+export const ListCapabilitiesResponseItem = zod.object({
+  "key": zod.string(),
+  "group": zod.string(),
+  "label": zod.string(),
+  "description": zod.string()
+})
+export const ListCapabilitiesResponse = zod.array(ListCapabilitiesResponseItem)
+
+
+/**
+ * @summary List custom roles for the current user's organisation
+ */
+export const ListOrgCustomRolesResponseItem = zod.object({
+  "id": zod.string(),
+  "organisationId": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "permissions": zod.array(zod.string()),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().nullish()
+})
+export const ListOrgCustomRolesResponse = zod.array(ListOrgCustomRolesResponseItem)
+
+
+/**
+ * @summary Create a new custom role for the org
+ */
+export const createOrgCustomRoleBodyNameMax = 64;
+
+export const createOrgCustomRoleBodyDescriptionMax = 256;
+
+
+
+export const CreateOrgCustomRoleBody = zod.object({
+  "name": zod.string().min(1).max(createOrgCustomRoleBodyNameMax),
+  "description": zod.string().max(createOrgCustomRoleBodyDescriptionMax).optional(),
+  "permissions": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary Update a custom role
+ */
+export const UpdateOrgCustomRoleParams = zod.object({
+  "roleId": zod.coerce.string()
+})
+
+export const updateOrgCustomRoleBodyNameMax = 64;
+
+export const updateOrgCustomRoleBodyDescriptionMax = 256;
+
+
+
+export const UpdateOrgCustomRoleBody = zod.object({
+  "name": zod.string().min(1).max(updateOrgCustomRoleBodyNameMax),
+  "description": zod.string().max(updateOrgCustomRoleBodyDescriptionMax).optional(),
+  "permissions": zod.array(zod.string()).optional()
+})
+
+export const UpdateOrgCustomRoleResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Delete a custom role (detaches users first)
+ */
+export const DeleteOrgCustomRoleParams = zod.object({
+  "roleId": zod.coerce.string()
 })
 
 

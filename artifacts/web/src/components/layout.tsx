@@ -40,6 +40,8 @@ import {
   FileSearch,
   FileText,
   Briefcase,
+  CreditCard,
+  KeyRound,
 } from "lucide-react";
 
 const ALL_ROLES = ["super_admin", "owner", "pm", "site_engineer", "qs", "finance", "contractor", "qc", "store", "hr", "admin"];
@@ -84,6 +86,8 @@ function getNavGroups(role: string | undefined, enabledModules: Set<string> | nu
         { titleKey: "nav.admin", url: "/admin", icon: ShieldCheck, roles: ["super_admin", "admin"] },
         { titleKey: "nav.organisations", url: "/organisations", icon: Users, roles: ["super_admin", "admin"] },
         { titleKey: "nav.team", url: "/settings/team", icon: Users2, roles: ["owner", "admin", "super_admin"] },
+        { titleKey: "nav.billing", url: "/settings/billing", icon: CreditCard, roles: ["owner", "admin", "super_admin"] },
+        { titleKey: "nav.roles", url: "/settings/roles", icon: KeyRound, roles: ["owner", "admin", "super_admin"] },
         { titleKey: "nav.profile", url: "/profile", icon: Settings, roles: ALL_ROLES },
       ],
     },

@@ -18,6 +18,8 @@ export interface OrgMember {
   profileImageUrl?: string | null;
   role: string;
   /** @nullable */
+  customRoleId?: string | null;
+  /** @nullable */
   phone?: string | null;
   /** @nullable */
   designation?: string | null;

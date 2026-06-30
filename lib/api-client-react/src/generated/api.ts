@@ -69,6 +69,7 @@ import type {
   BulkRateUpsertInput,
   BulkRecordAttendance201,
   BulkRecordAttendanceBody,
+  CapabilityDef,
   ClientInvoice,
   ContractorBill,
   CreateClientInvoiceBody,
@@ -204,10 +205,13 @@ import type {
   MilestoneUpdate,
   MyProfile,
   MyProfileUpdate,
+  OrgCustomRole,
+  OrgCustomRoleWrite,
   OrgInvitation,
   OrgInvitationInput,
   OrgMember,
   OrgMemberRoleUpdate,
+  OrgSubscriptionDetail,
   Organisation,
   OrganisationInput,
   OrganisationUpdate,
@@ -2248,6 +2252,450 @@ export const useCompleteOrgOnboarding = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCompleteOrgOnboardingMutationOptions(options));
+    }
+
+export const getGetOrgSubscriptionUrl = (organisationId: string,) => {
+
+
+
+
+  return `/api/organisations/${organisationId}/subscription`
+}
+
+/**
+ * @summary Current subscription plan + usage for the org
+ */
+export const getOrgSubscription = async (organisationId: string, options?: RequestInit): Promise<OrgSubscriptionDetail> => {
+
+  return customFetch<OrgSubscriptionDetail>(getGetOrgSubscriptionUrl(organisationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOrgSubscriptionQueryKey = (organisationId: string,) => {
+    return [
+    `/api/organisations/${organisationId}/subscription`
+    ] as const;
+    }
+
+
+export const getGetOrgSubscriptionQueryOptions = <TData = Awaited<ReturnType<typeof getOrgSubscription>>, TError = ErrorType<unknown>>(organisationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOrgSubscriptionQueryKey(organisationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgSubscription>>> = ({ signal }) => getOrgSubscription(organisationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(organisationId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOrgSubscription>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOrgSubscriptionQueryResult = NonNullable<Awaited<ReturnType<typeof getOrgSubscription>>>
+export type GetOrgSubscriptionQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Current subscription plan + usage for the org
+ */
+
+export function useGetOrgSubscription<TData = Awaited<ReturnType<typeof getOrgSubscription>>, TError = ErrorType<unknown>>(
+ organisationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOrgSubscription>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOrgSubscriptionQueryOptions(organisationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/custom-roles/capabilities`
+}
+
+/**
+ * @summary Return the full capability catalog (grouped)
+ */
+export const listCapabilities = async ( options?: RequestInit): Promise<CapabilityDef[]> => {
+
+  return customFetch<CapabilityDef[]>(getListCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCapabilitiesQueryKey = () => {
+    return [
+    `/api/custom-roles/capabilities`
+    ] as const;
+    }
+
+
+export const getListCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof listCapabilities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCapabilities>>> = ({ signal }) => listCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listCapabilities>>>
+export type ListCapabilitiesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Return the full capability catalog (grouped)
+ */
+
+export function useListCapabilities<TData = Awaited<ReturnType<typeof listCapabilities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListOrgCustomRolesUrl = () => {
+
+
+
+
+  return `/api/custom-roles`
+}
+
+/**
+ * @summary List custom roles for the current user's organisation
+ */
+export const listOrgCustomRoles = async ( options?: RequestInit): Promise<OrgCustomRole[]> => {
+
+  return customFetch<OrgCustomRole[]>(getListOrgCustomRolesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOrgCustomRolesQueryKey = () => {
+    return [
+    `/api/custom-roles`
+    ] as const;
+    }
+
+
+export const getListOrgCustomRolesQueryOptions = <TData = Awaited<ReturnType<typeof listOrgCustomRoles>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgCustomRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOrgCustomRolesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOrgCustomRoles>>> = ({ signal }) => listOrgCustomRoles({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOrgCustomRoles>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOrgCustomRolesQueryResult = NonNullable<Awaited<ReturnType<typeof listOrgCustomRoles>>>
+export type ListOrgCustomRolesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List custom roles for the current user's organisation
+ */
+
+export function useListOrgCustomRoles<TData = Awaited<ReturnType<typeof listOrgCustomRoles>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOrgCustomRoles>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOrgCustomRolesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateOrgCustomRoleUrl = () => {
+
+
+
+
+  return `/api/custom-roles`
+}
+
+/**
+ * @summary Create a new custom role for the org
+ */
+export const createOrgCustomRole = async (orgCustomRoleWrite: OrgCustomRoleWrite, options?: RequestInit): Promise<OrgCustomRole> => {
+
+  return customFetch<OrgCustomRole>(getCreateOrgCustomRoleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      orgCustomRoleWrite,)
+  }
+);}
+
+
+
+
+export const getCreateOrgCustomRoleMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrgCustomRole>>, TError,{data: BodyType<OrgCustomRoleWrite>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOrgCustomRole>>, TError,{data: BodyType<OrgCustomRoleWrite>}, TContext> => {
+
+const mutationKey = ['createOrgCustomRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOrgCustomRole>>, {data: BodyType<OrgCustomRoleWrite>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOrgCustomRole(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOrgCustomRoleMutationResult = NonNullable<Awaited<ReturnType<typeof createOrgCustomRole>>>
+    export type CreateOrgCustomRoleMutationBody = BodyType<OrgCustomRoleWrite>
+    export type CreateOrgCustomRoleMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Create a new custom role for the org
+ */
+export const useCreateOrgCustomRole = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOrgCustomRole>>, TError,{data: BodyType<OrgCustomRoleWrite>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOrgCustomRole>>,
+        TError,
+        {data: BodyType<OrgCustomRoleWrite>},
+        TContext
+      > => {
+      return useMutation(getCreateOrgCustomRoleMutationOptions(options));
+    }
+
+export const getUpdateOrgCustomRoleUrl = (roleId: string,) => {
+
+
+
+
+  return `/api/custom-roles/${roleId}`
+}
+
+/**
+ * @summary Update a custom role
+ */
+export const updateOrgCustomRole = async (roleId: string,
+    orgCustomRoleWrite: OrgCustomRoleWrite, options?: RequestInit): Promise<SuccessEnvelope> => {
+
+  return customFetch<SuccessEnvelope>(getUpdateOrgCustomRoleUrl(roleId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      orgCustomRoleWrite,)
+  }
+);}
+
+
+
+
+export const getUpdateOrgCustomRoleMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrgCustomRole>>, TError,{roleId: string;data: BodyType<OrgCustomRoleWrite>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateOrgCustomRole>>, TError,{roleId: string;data: BodyType<OrgCustomRoleWrite>}, TContext> => {
+
+const mutationKey = ['updateOrgCustomRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateOrgCustomRole>>, {roleId: string;data: BodyType<OrgCustomRoleWrite>}> = (props) => {
+          const {roleId,data} = props ?? {};
+
+          return  updateOrgCustomRole(roleId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateOrgCustomRoleMutationResult = NonNullable<Awaited<ReturnType<typeof updateOrgCustomRole>>>
+    export type UpdateOrgCustomRoleMutationBody = BodyType<OrgCustomRoleWrite>
+    export type UpdateOrgCustomRoleMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Update a custom role
+ */
+export const useUpdateOrgCustomRole = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateOrgCustomRole>>, TError,{roleId: string;data: BodyType<OrgCustomRoleWrite>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateOrgCustomRole>>,
+        TError,
+        {roleId: string;data: BodyType<OrgCustomRoleWrite>},
+        TContext
+      > => {
+      return useMutation(getUpdateOrgCustomRoleMutationOptions(options));
+    }
+
+export const getDeleteOrgCustomRoleUrl = (roleId: string,) => {
+
+
+
+
+  return `/api/custom-roles/${roleId}`
+}
+
+/**
+ * @summary Delete a custom role (detaches users first)
+ */
+export const deleteOrgCustomRole = async (roleId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteOrgCustomRoleUrl(roleId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteOrgCustomRoleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrgCustomRole>>, TError,{roleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteOrgCustomRole>>, TError,{roleId: string}, TContext> => {
+
+const mutationKey = ['deleteOrgCustomRole'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteOrgCustomRole>>, {roleId: string}> = (props) => {
+          const {roleId} = props ?? {};
+
+          return  deleteOrgCustomRole(roleId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteOrgCustomRoleMutationResult = NonNullable<Awaited<ReturnType<typeof deleteOrgCustomRole>>>
+
+    export type DeleteOrgCustomRoleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a custom role (detaches users first)
+ */
+export const useDeleteOrgCustomRole = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteOrgCustomRole>>, TError,{roleId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteOrgCustomRole>>,
+        TError,
+        {roleId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteOrgCustomRoleMutationOptions(options));
     }
 
 export const getUpdateProjectModulesUrl = (projectId: string,) => {

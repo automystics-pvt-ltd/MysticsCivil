@@ -181,6 +181,8 @@ export interface OrgMember {
   profileImageUrl?: string | null;
   role: string;
   /** @nullable */
+  customRoleId?: string | null;
+  /** @nullable */
   phone?: string | null;
   /** @nullable */
   designation?: string | null;
@@ -189,6 +191,8 @@ export interface OrgMember {
 
 export interface OrgMemberRoleUpdate {
   role: UserRole;
+  /** @nullable */
+  customRoleId?: string | null;
 }
 
 export interface ErrorEnvelope {
@@ -1997,6 +2001,95 @@ export interface AdminCustomRole {
   /** @nullable */
   permissions?: AdminCustomRolePermissions;
   createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type OrgSubscriptionDetailSubscription = {
+  id?: string;
+  status?: string;
+  /** @nullable */
+  trialEndsAt?: string | null;
+  /** @nullable */
+  currentPeriodStart?: string | null;
+  /** @nullable */
+  currentPeriodEnd?: string | null;
+  /** @nullable */
+  daysRemaining?: number | null;
+  /** @nullable */
+  cancelledAt?: string | null;
+  limitsOverride?: unknown;
+  /** @nullable */
+  updatedAt?: string | null;
+} | null;
+
+/**
+ * @nullable
+ */
+export type OrgSubscriptionDetailPlan = {
+  id?: string;
+  slug?: string;
+  name?: string;
+  /** @nullable */
+  priceMonthly?: number | null;
+  limits?: unknown;
+  effectiveLimits?: {
+  /** @nullable */
+  maxProjects?: number | null;
+  /** @nullable */
+  maxUsers?: number | null;
+  /** @nullable */
+  maxStorageGb?: number | null;
+};
+  features?: unknown;
+} | null;
+
+/**
+ * @nullable
+ */
+export type OrgSubscriptionDetailUsage = {
+  projectCount?: number;
+  userCount?: number;
+} | null;
+
+export interface OrgSubscriptionDetail {
+  /** @nullable */
+  subscription?: OrgSubscriptionDetailSubscription;
+  /** @nullable */
+  plan?: OrgSubscriptionDetailPlan;
+  /** @nullable */
+  usage?: OrgSubscriptionDetailUsage;
+}
+
+export interface OrgCustomRole {
+  id: string;
+  organisationId: string;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  permissions: string[];
+  createdAt: string;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export interface OrgCustomRoleWrite {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  name: string;
+  /** @maxLength 256 */
+  description?: string;
+  permissions?: string[];
+}
+
+export interface CapabilityDef {
+  key: string;
+  group: string;
+  label: string;
+  description: string;
 }
 
 export type AdminSystemStatsSignupsByDayItem = {

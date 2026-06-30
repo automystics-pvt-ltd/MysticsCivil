@@ -13,6 +13,8 @@ import Signup from "@/pages/signup";
 import Onboarding from "@/pages/onboarding";
 import JoinPage from "@/pages/join";
 import SettingsTeam from "@/pages/settings-team";
+import SettingsBilling from "@/pages/settings-billing";
+import SettingsRoles from "@/pages/settings-roles";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import ProjectNew from "@/pages/project-new";
@@ -88,6 +90,8 @@ function Router() {
         <Route path="/join/:token" component={JoinPage} />
         <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} />} />
         <Route path="/settings/team" component={() => <ProtectedRoute component={SettingsTeam} />} />
+        <Route path="/settings/billing" component={() => <ProtectedRoute component={SettingsBilling} />} />
+        <Route path="/settings/roles" component={() => <ProtectedRoute component={SettingsRoles} />} />
         <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
         <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
         <Route path="/projects/new" component={() => <ProtectedRoute component={ProjectNew} />} />

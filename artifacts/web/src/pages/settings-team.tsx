@@ -29,6 +29,7 @@ import {
   useRevokeOrgInvitation,
   useUpdateOrgMemberRole,
   useRemoveOrgMember,
+  useListOrgCustomRoles,
   getListOrgMembersQueryKey,
   getListOrgInvitationsQueryKey,
 } from "@workspace/api-client-react";
@@ -72,6 +73,7 @@ export default function SettingsTeam() {
 
   const { data: members = [], isLoading: loadingMembers } = useListOrgMembers(orgId, { query: { enabled: !!orgId } as any });
   const { data: invitations = [], isLoading: loadingInvites } = useListOrgInvitations(orgId, { query: { enabled: !!orgId } as any });
+  const { data: customRoles = [] } = useListOrgCustomRoles();
 
   const createInvite = useCreateOrgInvitation();
   const revokeInvite = useRevokeOrgInvitation();
@@ -128,9 +130,11 @@ export default function SettingsTeam() {
     }
   }
 
-  async function handleRoleChange(userId: string, newRole: string) {
+  async function handleRoleChange(userId: string, newRole: string, customRoleId?: string | null) {
     try {
-      await updateRole.mutateAsync({ organisationId: orgId, userId, data: { role: newRole as any } });
+      const data: any = { role: newRole };
+      if (customRoleId !== undefined) data.customRoleId = customRoleId;
+      await updateRole.mutateAsync({ organisationId: orgId, userId, data });
       toast({ title: "Role updated" });
       queryClient.invalidateQueries({ queryKey: getListOrgMembersQueryKey(orgId) });
     } catch (err: any) {
@@ -219,14 +223,23 @@ export default function SettingsTeam() {
                     <AvatarFallback>{initials(m.firstName, m.lastName, m.email)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium text-sm truncate">{name}</p>
                       {isMe && <Badge variant="outline" className="text-xs">You</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                     {m.designation && <p className="text-xs text-muted-foreground">{m.designation}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      Joined {m.joinedAt ? new Date(m.joinedAt).toLocaleDateString() : "—"}
+                    </p>
                   </div>
-                  <Badge variant="secondary">{roleLabel(m.role)}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant="secondary">{roleLabel(m.role)}</Badge>
+                    {(m as any).customRoleId && (() => {
+                      const cr = customRoles.find((r) => r.id === (m as any).customRoleId);
+                      return cr ? <Badge variant="outline" className="text-[10px]">+{cr.name}</Badge> : null;
+                    })()}
+                  </div>
                   {isAdminRole && !isMe && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -234,20 +247,45 @@ export default function SettingsTeam() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="min-w-[200px]">
                         <div className="px-2 py-1.5">
-                          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Change role</p>
+                          <p className="text-xs text-muted-foreground mb-1.5 font-medium">Base role</p>
                           {USER_ROLES.map((r) => (
                             <DropdownMenuItem
                               key={r}
-                              onSelect={() => handleRoleChange(m.userId, r)}
-                              className={m.role === r ? "font-medium text-primary" : ""}
+                              onSelect={() => handleRoleChange(m.userId, r, null)}
+                              className={m.role === r && !(m as any).customRoleId ? "font-medium text-primary" : ""}
                             >
                               <Shield className="h-3.5 w-3.5 mr-2" />
                               {roleLabel(r)}
                             </DropdownMenuItem>
                           ))}
                         </div>
+                        {customRoles.length > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="px-2 py-1.5">
+                              <p className="text-xs text-muted-foreground mb-1.5 font-medium">Custom role overlay</p>
+                              <DropdownMenuItem
+                                onSelect={() => handleRoleChange(m.userId, m.role, null)}
+                                className={!(m as any).customRoleId ? "font-medium text-primary" : ""}
+                              >
+                                <Shield className="h-3.5 w-3.5 mr-2" />
+                                None
+                              </DropdownMenuItem>
+                              {customRoles.map((cr) => (
+                                <DropdownMenuItem
+                                  key={cr.id}
+                                  onSelect={() => handleRoleChange(m.userId, m.role, cr.id)}
+                                  className={(m as any).customRoleId === cr.id ? "font-medium text-primary" : ""}
+                                >
+                                  <Shield className="h-3.5 w-3.5 mr-2" />
+                                  {cr.name}
+                                </DropdownMenuItem>
+                              ))}
+                            </div>
+                          </>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"

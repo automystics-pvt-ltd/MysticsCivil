@@ -597,6 +597,102 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SuccessEnvelope' }
 
+  /organisations/{organisationId}/subscription:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    get:
+      tags: [Organisations]
+      operationId: getOrgSubscription
+      summary: Current subscription plan + usage for the org
+      responses:
+        '200':
+          description: Subscription detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgSubscriptionDetail' }
+
+  /custom-roles/capabilities:
+    get:
+      tags: [CustomRoles]
+      operationId: listCapabilities
+      summary: Return the full capability catalog (grouped)
+      responses:
+        '200':
+          description: Capability list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CapabilityDef' }
+
+  /custom-roles:
+    get:
+      tags: [CustomRoles]
+      operationId: listOrgCustomRoles
+      summary: List custom roles for the current user's organisation
+      responses:
+        '200':
+          description: Custom role list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OrgCustomRole' }
+    post:
+      tags: [CustomRoles]
+      operationId: createOrgCustomRole
+      summary: Create a new custom role for the org
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrgCustomRoleWrite' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgCustomRole' }
+        '409':
+          description: Name conflict
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /custom-roles/{roleId}:
+    parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [CustomRoles]
+      operationId: updateOrgCustomRole
+      summary: Update a custom role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrgCustomRoleWrite' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    delete:
+      tags: [CustomRoles]
+      operationId: deleteOrgCustomRole
+      summary: Delete a custom role (detaches users first)
+      responses:
+        '204':
+          description: Deleted
+
   /projects/{projectId}/modules:
     parameters:
       - $ref: '#/components/parameters/ProjectIdParam'
@@ -3730,6 +3826,7 @@ components:
         lastName: { type: [string, 'null'] }
         profileImageUrl: { type: [string, 'null'] }
         role: { type: string }
+        customRoleId: { type: ["string", "null"] }
         phone: { type: [string, 'null'] }
         designation: { type: [string, 'null'] }
         joinedAt: { type: string, format: date-time }
@@ -3738,6 +3835,7 @@ components:
       required: [role]
       properties:
         role: { $ref: '#/components/schemas/UserRole' }
+        customRoleId: { type: ["string", "null"] }
 
     ErrorEnvelope:
       type: object
@@ -5298,6 +5396,75 @@ components:
         description: { type: ["string", "null"] }
         permissions: { type: ["object", "null"] }
         createdAt: { type: string, format: date-time }
+
+    OrgSubscriptionDetail:
+      type: object
+      properties:
+        subscription:
+          type: ["object", "null"]
+          properties:
+            id: { type: string }
+            status: { type: string }
+            trialEndsAt: { type: ["string", "null"], format: date-time }
+            currentPeriodStart: { type: ["string", "null"], format: date-time }
+            currentPeriodEnd: { type: ["string", "null"], format: date-time }
+            daysRemaining: { type: ["integer", "null"] }
+            cancelledAt: { type: ["string", "null"], format: date-time }
+            limitsOverride: {}
+            updatedAt: { type: ["string", "null"], format: date-time }
+        plan:
+          type: ["object", "null"]
+          properties:
+            id: { type: string }
+            slug: { type: string }
+            name: { type: string }
+            priceMonthly: { type: ["number", "null"] }
+            limits: {}
+            effectiveLimits:
+              type: object
+              properties:
+                maxProjects: { type: ["integer", "null"] }
+                maxUsers: { type: ["integer", "null"] }
+                maxStorageGb: { type: ["integer", "null"] }
+            features: {}
+        usage:
+          type: ["object", "null"]
+          properties:
+            projectCount: { type: integer }
+            userCount: { type: integer }
+
+    OrgCustomRole:
+      type: object
+      required: [id, organisationId, name, permissions, createdAt]
+      properties:
+        id: { type: string }
+        organisationId: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        permissions:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: ["string", "null"], format: date-time }
+
+    OrgCustomRoleWrite:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        description: { type: string, maxLength: 256 }
+        permissions:
+          type: array
+          items: { type: string }
+
+    CapabilityDef:
+      type: object
+      required: [key, group, label, description]
+      properties:
+        key: { type: string }
+        group: { type: string }
+        label: { type: string }
+        description: { type: string }
 
     AdminSystemStats:
       type: object

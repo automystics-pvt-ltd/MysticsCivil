@@ -9,4 +9,6 @@ import type { UserRole } from './userRole';
 
 export interface OrgMemberRoleUpdate {
   role: UserRole;
+  /** @nullable */
+  customRoleId?: string | null;
 }

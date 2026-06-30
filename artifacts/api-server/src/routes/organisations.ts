@@ -271,6 +271,7 @@ router.get(
       .select({
         userId: userProfilesTable.userId,
         role: userProfilesTable.role,
+        customRoleId: userProfilesTable.customRoleId,
         organisationId: userProfilesTable.organisationId,
         phone: userProfilesTable.phone,
         designation: userProfilesTable.designation,
@@ -291,6 +292,7 @@ router.get(
       lastName: r.lastName,
       profileImageUrl: r.profileImageUrl,
       role: r.role,
+      customRoleId: r.customRoleId ?? null,
       phone: r.phone,
       designation: r.designation,
       joinedAt: r.createdAt,
@@ -318,9 +320,14 @@ router.patch(
       res.status(400).json({ error: `Invalid role: ${role}` });
       return;
     }
+    const patchSet: Record<string, unknown> = { role, updatedAt: new Date() };
+    // customRoleId: null clears the custom role; a string sets it.
+    if ("customRoleId" in (req.body ?? {})) {
+      patchSet.customRoleId = req.body.customRoleId ?? null;
+    }
     const [updated] = await db
       .update(userProfilesTable)
-      .set({ role, updatedAt: new Date() } as any)
+      .set(patchSet as any)
       .where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.organisationId, organisationId)))
       .returning({ userId: userProfilesTable.userId });
     if (!updated) {
