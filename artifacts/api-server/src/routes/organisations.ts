@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, organisationsTable, tenantSubscriptionsTable, subscriptionPlansTable, projectsTable, userProfilesTable, usersTable, USER_ROLES } from "@workspace/db";
+import { db, organisationsTable, tenantSubscriptionsTable, subscriptionPlansTable, projectsTable, userProfilesTable, usersTable, customRolesTable, USER_ROLES } from "@workspace/db";
 import { eq, sql, and } from "drizzle-orm";
 import { requireAuth, requireRole, ROLE_GROUPS, loadRole } from "../middlewares/requireAuth";
 import { serializeOrg, serializeOrgPublic } from "../lib/serialize";
@@ -321,9 +321,26 @@ router.patch(
       return;
     }
     const patchSet: Record<string, unknown> = { role, updatedAt: new Date() };
-    // customRoleId: null clears the custom role; a string sets it.
+    // customRoleId: null clears the custom role; a string sets it after validating org ownership.
     if ("customRoleId" in (req.body ?? {})) {
-      patchSet.customRoleId = req.body.customRoleId ?? null;
+      const incomingCustomRoleId = req.body.customRoleId ?? null;
+      if (incomingCustomRoleId !== null) {
+        // Verify the custom role belongs to this organisation before assigning it.
+        const [crRow] = await db
+          .select({ id: customRolesTable.id })
+          .from(customRolesTable)
+          .where(
+            and(
+              eq(customRolesTable.id, String(incomingCustomRoleId)),
+              eq(customRolesTable.organisationId, organisationId),
+            ),
+          );
+        if (!crRow) {
+          res.status(400).json({ error: "Custom role not found in this organisation" });
+          return;
+        }
+      }
+      patchSet.customRoleId = incomingCustomRoleId;
     }
     const [updated] = await db
       .update(userProfilesTable)

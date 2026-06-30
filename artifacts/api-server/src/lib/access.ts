@@ -126,11 +126,17 @@ async function loadContext(req: Request): Promise<AccessContext> {
     .from(userProfilesTable)
     .where(eq(userProfilesTable.userId, userId));
   let customPermissions: string[] = [];
-  if (profile?.customRoleId) {
+  if (profile?.customRoleId && profile?.organisationId) {
+    // Scope by both id AND organisationId so a cross-tenant role ID never grants permissions.
     const [cr] = await db
       .select({ permissions: customRolesTable.permissions })
       .from(customRolesTable)
-      .where(eq(customRolesTable.id, profile.customRoleId));
+      .where(
+        and(
+          eq(customRolesTable.id, profile.customRoleId),
+          eq(customRolesTable.organisationId, profile.organisationId),
+        ),
+      );
     if (Array.isArray(cr?.permissions)) customPermissions = cr.permissions;
   }
   return {

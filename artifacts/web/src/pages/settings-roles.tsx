@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -56,12 +56,13 @@ function RoleEditor({ open, onOpenChange, editing, capabilities, onSaved }: Role
   const [selected, setSelected] = useState<Set<string>>(new Set(editing?.permissions ?? []));
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  // Reset when editing target changes
-  useState(() => {
+  // Reset form state whenever the editing target or open state changes
+  useEffect(() => {
     setName(editing?.name ?? "");
     setDescription(editing?.description ?? "");
     setSelected(new Set(editing?.permissions ?? []));
-  });
+    setCollapsedGroups(new Set());
+  }, [editing, open]);
 
   function toggleCap(key: string) {
     setSelected((prev) => {

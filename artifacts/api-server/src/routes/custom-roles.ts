@@ -126,12 +126,12 @@ router.patch("/custom-roles/:roleId", requireAuth, async (req: Request, res: Res
     patch.permissions = sanitizeCapabilityList(b.permissions);
   }
   if (!Object.keys(patch).length) {
-    res.json({ ok: true });
+    res.json({ success: true });
     return;
   }
   try {
     await db.update(customRolesTable).set(patch).where(eq(customRolesTable.id, roleId));
-    res.json({ ok: true });
+    res.json({ success: true });
   } catch (e: any) {
     if (String(e?.code) === "23505") {
       res.status(409).json({ error: "A role with that name already exists in this organisation" });
