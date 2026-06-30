@@ -464,9 +464,9 @@ function Sidebar({
   return (
     <aside
       className={`
-        ${mobile ? "fixed inset-y-0 left-0 z-50 w-72" : "sticky top-0 h-screen"}
+        ${mobile ? "fixed inset-y-0 left-0 z-50 w-72" : "h-full"}
         ${isCompact ? "w-[78px]" : "w-72"}
-        flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-[width] duration-200
+        flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-[width] duration-200 flex-shrink-0
       `}
       data-testid="sidebar"
     >
@@ -715,61 +715,60 @@ function TopHeader({
   const initials = `${profile?.firstName?.[0] ?? ""}${profile?.lastName?.[0] ?? ""}`.toUpperCase() || "U";
 
   return (
-    <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/60">
-      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 h-14">
+    <header className="flex-shrink-0 z-30 bg-background/95 backdrop-blur-xl border-b border-border/60">
+      {/* Three-column header: [left controls] [center search] [right toolbar] */}
+      <div className="flex items-center h-14 px-3 sm:px-4 md:px-5">
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={onOpenMobile}
-          className="md:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center flex-shrink-0 text-muted-foreground hover:text-foreground transition"
-          aria-label="Open navigation"
-          data-testid="mobile-open"
-        >
-          <Menu className="h-4 w-4" />
-        </button>
+        {/* ── LEFT: nav toggles ── */}
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          {/* Mobile hamburger */}
+          <button
+            onClick={onOpenMobile}
+            className="md:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition"
+            aria-label="Open navigation"
+            data-testid="mobile-open"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+          {/* Desktop sidebar collapse toggle */}
+          <button
+            onClick={onToggleSidebar}
+            className="hidden md:flex h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 items-center justify-center text-muted-foreground hover:text-foreground transition"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            data-testid="sidebar-toggle"
+          >
+            <ChevronsLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
+          </button>
+        </div>
 
-        {/* Desktop sidebar collapse toggle */}
-        <button
-          onClick={onToggleSidebar}
-          className="hidden md:flex h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 items-center justify-center text-muted-foreground hover:text-foreground transition flex-shrink-0"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          data-testid="sidebar-toggle"
-        >
-          <ChevronsLeft className={`h-4 w-4 transition-transform ${collapsed ? "rotate-180" : ""}`} />
-        </button>
+        {/* ── CENTER: search bar (fills all remaining space between left & right) ── */}
+        <div className="flex-1 flex items-center px-3 sm:px-4 min-w-0">
+          <form
+            role="search"
+            className="hidden sm:block w-full max-w-lg relative"
+            onSubmit={(e) => e.preventDefault()}
+          >
+            <label htmlFor="header-search" className="sr-only">Search projects, DPRs and RA bills</label>
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[17px] w-[17px] text-foreground/50 pointer-events-none" />
+            <input
+              id="header-search"
+              type="search"
+              placeholder="Search projects, DPRs, RA bills…"
+              aria-label="Search projects, DPRs and RA bills"
+              className="w-full h-9 rounded-full bg-muted border border-transparent focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-primary/15 pl-10 pr-4 text-sm font-medium text-foreground placeholder:text-foreground/45 transition"
+              data-testid="header-search"
+            />
+          </form>
+        </div>
 
-        {/* Search bar — hidden on xs, full bar on sm+ */}
-        <form
-          role="search"
-          className="hidden sm:flex flex-1 min-w-0 max-w-xl relative"
-          onSubmit={(e) => e.preventDefault()}
-        >
-          <label htmlFor="header-search" className="sr-only">Search projects, DPRs and RA bills</label>
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-foreground/60 pointer-events-none" />
-          <input
-            id="header-search"
-            type="search"
-            placeholder="Search projects, DPRs, RA bills…"
-            aria-label="Search projects, DPRs and RA bills"
-            className="w-full h-10 rounded-full bg-muted border border-transparent focus:border-primary focus:bg-card focus:outline-none focus:ring-4 focus:ring-primary/15 pl-11 pr-4 text-[14px] font-medium text-foreground placeholder:text-foreground/50 placeholder:font-medium transition"
-            data-testid="header-search"
-          />
-        </form>
-
-        {/* Mobile: push right-side controls to the far right */}
-        <div className="flex-1 sm:hidden" aria-hidden />
-
-        {/* ── Right toolbar (always flex-shrink-0, no overflow) ── */}
+        {/* ── RIGHT: action icons + user menu — always flush with the right edge ── */}
         <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
 
-          {/* Search icon — mobile only */}
+          {/* Search icon — xs only (no search bar on mobile) */}
           <button
             className="sm:hidden h-9 w-9 rounded-xl bg-muted hover:bg-muted/70 flex items-center justify-center text-muted-foreground hover:text-foreground transition"
             aria-label="Search"
-            onClick={() => {
-              const el = document.getElementById("header-search");
-              if (el) { (el as HTMLInputElement).focus(); }
-            }}
+            onClick={() => (document.getElementById("header-search") as HTMLInputElement | null)?.focus()}
           >
             <Search className="h-4 w-4" />
           </button>
@@ -787,31 +786,43 @@ function TopHeader({
 
           <NotificationBell role={profile?.role} enabledModules={enabledModules} />
 
-          {/* ── User menu (avatar + name + logout in a dropdown) ── */}
+          {/* ── User menu: avatar + name/role chip → dropdown with profile & logout ── */}
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-muted transition ml-0.5"
+                className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full hover:bg-muted/80 border border-transparent hover:border-border/60 transition ml-1"
                 aria-label="User menu"
                 data-testid="user-menu-trigger"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[13px] font-extrabold ring-2 ring-background flex-shrink-0">
+                {/* Avatar */}
+                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[12px] font-extrabold ring-2 ring-background flex-shrink-0">
                   {initials}
                 </div>
+                {/* Name + role — shown on sm+ */}
                 {profile && (
-                  <div className="hidden md:flex flex-col leading-tight text-left min-w-0 max-w-[120px]">
-                    <span className="text-[13px] font-bold text-foreground truncate">{profile.firstName} {profile.lastName}</span>
-                    <span className="text-[11px] text-muted-foreground capitalize font-semibold">{profile.role}</span>
+                  <div className="hidden sm:flex flex-col leading-tight text-left min-w-0">
+                    <span className="text-[12.5px] font-bold text-foreground truncate max-w-[100px]">
+                      {profile.firstName} {profile.lastName}
+                    </span>
+                    <span className="text-[10.5px] text-muted-foreground capitalize font-semibold leading-none mt-0.5">
+                      {profile.role}
+                    </span>
                   </div>
                 )}
-                <ChevronDown className="hidden md:block h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <ChevronDown className="hidden sm:block h-3.5 w-3.5 text-muted-foreground/70 flex-shrink-0" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" sideOffset={6} className="w-52 p-1.5">
+            <PopoverContent align="end" sideOffset={8} className="w-56 p-1.5">
+              {/* Identity header */}
               {profile && (
-                <div className="px-3 py-2 mb-1 border-b border-border">
-                  <div className="text-sm font-semibold truncate">{profile.firstName} {profile.lastName}</div>
-                  <div className="text-[11px] text-muted-foreground capitalize mt-0.5">{profile.role}</div>
+                <div className="flex items-center gap-2.5 px-3 py-2.5 mb-1 border-b border-border">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white flex items-center justify-center text-[12px] font-extrabold flex-shrink-0">
+                    {initials}
+                  </div>
+                  <div className="flex flex-col leading-tight min-w-0">
+                    <span className="text-sm font-semibold truncate">{profile.firstName} {profile.lastName}</span>
+                    <span className="text-[11px] text-muted-foreground capitalize">{profile.role}</span>
+                  </div>
                 </div>
               )}
               <Link
@@ -866,18 +877,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => { await logout(); setLocation("/login"); };
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground relative overflow-x-hidden">
+    <div className="h-screen w-full bg-background text-foreground overflow-hidden relative">
+      {/* Ambient background blobs — fixed so they don't affect layout */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute -top-32 -left-32 h-[420px] w-[420px] rounded-full bg-violet-300/20 blur-3xl" />
         <div className="absolute top-1/3 -right-32 h-[420px] w-[420px] rounded-full bg-indigo-300/20 blur-3xl" />
         <div className="absolute bottom-0 left-1/3 h-[320px] w-[320px] rounded-full bg-fuchsia-200/20 blur-3xl" />
       </div>
 
-      <div className="flex">
-        <div className="hidden md:block">
+      <div className="flex h-full">
+        {/* Desktop sidebar — full height, never scrolls the page */}
+        <div className="hidden md:block flex-shrink-0">
           <Sidebar groups={groups} collapsed={collapsed} t={t} />
         </div>
 
+        {/* Mobile sidebar overlay */}
         {mobileOpen && (
           <>
             <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setMobileOpen(false)} />
@@ -885,7 +899,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </>
         )}
 
-        <div className="flex-1 min-w-0 flex flex-col">
+        {/* Main column: header (fixed-height) + scrollable content */}
+        <div className="flex-1 min-w-0 flex flex-col h-full">
           <TopHeader
             onToggleSidebar={() => setCollapsed((c) => !c)}
             onOpenMobile={() => setMobileOpen(true)}
@@ -895,7 +910,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             t={t}
             enabledModules={myOrgModules}
           />
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
+          {/* Only this area scrolls — no page-level scroll ever */}
+          <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
             {children}
           </main>
         </div>
