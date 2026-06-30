@@ -49,6 +49,148 @@ export const LogoutSuccessValue = {
 } as const;
 export type LogoutSuccess = typeof LogoutSuccessValue;
 
+export const SuccessEnvelopeValue = {
+  success: true,
+} as const;
+export type SuccessEnvelope = typeof SuccessEnvelopeValue;
+
+export interface RegisterTenantRequest {
+  /** @minLength 1 */
+  companyName: string;
+  email: string;
+  /** @minLength 8 */
+  password: string;
+  /** @minLength 1 */
+  firstName: string;
+  lastName: string;
+  industry?: string;
+}
+
+export type RegisterTenantResponseUser = {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+};
+
+export type RegisterTenantResponseOrganisation = {
+  id: string;
+  name: string;
+};
+
+export interface RegisterTenantResponse {
+  user: RegisterTenantResponseUser;
+  organisation: RegisterTenantResponseOrganisation;
+}
+
+export type InvitationTokenDetailOrganisation = {
+  id: string;
+  name: string;
+};
+
+export interface InvitationTokenDetail {
+  id: string;
+  email: string;
+  role: string;
+  expiresAt: string;
+  organisation: InvitationTokenDetailOrganisation;
+}
+
+export interface AcceptInvitationRequest {
+  firstName?: string;
+  lastName?: string;
+  /** @minLength 8 */
+  password?: string;
+}
+
+export type AcceptInvitationResponseUser = {
+  id: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+};
+
+export type AcceptInvitationResponseOrganisation = {
+  id: string;
+};
+
+export interface AcceptInvitationResponse {
+  user: AcceptInvitationResponseUser;
+  organisation: AcceptInvitationResponseOrganisation;
+}
+
+export type OrgInvitationStatus = typeof OrgInvitationStatus[keyof typeof OrgInvitationStatus];
+
+
+export const OrgInvitationStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export interface OrgInvitation {
+  id: string;
+  email: string;
+  role: string;
+  status: OrgInvitationStatus;
+  createdAt: string;
+  expiresAt: string;
+  /** @nullable */
+  acceptedAt?: string | null;
+  /** @nullable */
+  revokedAt?: string | null;
+}
+
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+
+export const UserRole = {
+  owner: 'owner',
+  pm: 'pm',
+  site_engineer: 'site_engineer',
+  qs: 'qs',
+  finance: 'finance',
+  contractor: 'contractor',
+  qc: 'qc',
+  store: 'store',
+  hr: 'hr',
+  admin: 'admin',
+} as const;
+
+export interface OrgInvitationInput {
+  email: string;
+  role: UserRole;
+}
+
+export interface OrgMember {
+  userId: string;
+  /** @nullable */
+  email: string | null;
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  profileImageUrl?: string | null;
+  role: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  designation?: string | null;
+  joinedAt: string;
+}
+
+export interface OrgMemberRoleUpdate {
+  role: UserRole;
+}
+
 export interface ErrorEnvelope {
   error: string;
 }
@@ -67,22 +209,6 @@ export interface UploadUrlResponse {
   objectPath: string;
   metadata?: UploadUrlRequest;
 }
-
-export type UserRole = typeof UserRole[keyof typeof UserRole];
-
-
-export const UserRole = {
-  owner: 'owner',
-  pm: 'pm',
-  site_engineer: 'site_engineer',
-  qs: 'qs',
-  finance: 'finance',
-  contractor: 'contractor',
-  qc: 'qc',
-  store: 'store',
-  hr: 'hr',
-  admin: 'admin',
-} as const;
 
 export type ProjectStatus = typeof ProjectStatus[keyof typeof ProjectStatus];
 
@@ -188,6 +314,8 @@ export interface Organisation {
   logoUrl: string | null;
   /** @nullable */
   enabledModules?: string[] | null;
+  /** @nullable */
+  onboardingCompletedAt?: string | null;
   createdAt: string;
 }
 

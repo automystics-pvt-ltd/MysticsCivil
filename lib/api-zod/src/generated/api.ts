@@ -181,6 +181,7 @@ export const ListOrganisationsResponseItem = zod.object({
   "pincode": zod.string().nullable(),
   "logoUrl": zod.string().nullable(),
   "enabledModules": zod.array(zod.string()).nullish(),
+  "onboardingCompletedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListOrganisationsResponse = zod.array(ListOrganisationsResponseItem)
@@ -218,6 +219,7 @@ export const GetOrganisationResponse = zod.object({
   "pincode": zod.string().nullable(),
   "logoUrl": zod.string().nullable(),
   "enabledModules": zod.array(zod.string()).nullish(),
+  "onboardingCompletedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -253,6 +255,7 @@ export const UpdateOrganisationResponse = zod.object({
   "pincode": zod.string().nullable(),
   "logoUrl": zod.string().nullable(),
   "enabledModules": zod.array(zod.string()).nullish(),
+  "onboardingCompletedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -291,6 +294,183 @@ export const ListOrganisationUsersResponseItem = zod.object({
   "email": zod.string().nullable()
 })
 export const ListOrganisationUsersResponse = zod.array(ListOrganisationUsersResponseItem)
+
+
+/**
+ * @summary Self-service tenant registration — creates user + org + free plan subscription
+ */
+
+export const registerTenantBodyPasswordMin = 8;
+
+
+
+
+export const RegisterTenantBody = zod.object({
+  "companyName": zod.string().min(1),
+  "email": zod.string().email(),
+  "password": zod.string().min(registerTenantBodyPasswordMin),
+  "firstName": zod.string().min(1),
+  "lastName": zod.string(),
+  "industry": zod.string().optional()
+})
+
+
+/**
+ * @summary Validate an invitation token (public — no auth required)
+ */
+export const GetInvitationByTokenParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetInvitationByTokenResponse = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "expiresAt": zod.coerce.date(),
+  "organisation": zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})
+})
+
+
+/**
+ * @summary Accept an invitation. Creates account if needed, starts session.
+ */
+export const AcceptInvitationParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const acceptInvitationBodyPasswordMin = 8;
+
+
+
+export const AcceptInvitationBody = zod.object({
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
+  "password": zod.string().min(acceptInvitationBodyPasswordMin).optional()
+})
+
+export const AcceptInvitationResponse = zod.object({
+  "user": zod.object({
+  "id": zod.string(),
+  "email": zod.string().nullable(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish()
+}),
+  "organisation": zod.object({
+  "id": zod.string()
+})
+})
+
+
+/**
+ * @summary List all invitations for an organisation
+ */
+export const ListOrgInvitationsParams = zod.object({
+  "organisationId": zod.coerce.string()
+})
+
+export const ListOrgInvitationsResponseItem = zod.object({
+  "id": zod.string(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'revoked', 'expired']),
+  "createdAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish()
+})
+export const ListOrgInvitationsResponse = zod.array(ListOrgInvitationsResponseItem)
+
+
+/**
+ * @summary Send an invitation to a new team member
+ */
+export const CreateOrgInvitationParams = zod.object({
+  "organisationId": zod.coerce.string()
+})
+
+export const CreateOrgInvitationBody = zod.object({
+  "email": zod.string().email(),
+  "role": zod.enum(['owner', 'pm', 'site_engineer', 'qs', 'finance', 'contractor', 'qc', 'store', 'hr', 'admin'])
+})
+
+
+/**
+ * @summary Revoke a pending invitation
+ */
+export const RevokeOrgInvitationParams = zod.object({
+  "organisationId": zod.coerce.string(),
+  "invitationId": zod.coerce.string()
+})
+
+export const RevokeOrgInvitationResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary List all members of an organisation
+ */
+export const ListOrgMembersParams = zod.object({
+  "organisationId": zod.coerce.string()
+})
+
+export const ListOrgMembersResponseItem = zod.object({
+  "userId": zod.string(),
+  "email": zod.string().nullable(),
+  "firstName": zod.string().nullish(),
+  "lastName": zod.string().nullish(),
+  "profileImageUrl": zod.string().nullish(),
+  "role": zod.string(),
+  "phone": zod.string().nullish(),
+  "designation": zod.string().nullish(),
+  "joinedAt": zod.coerce.date()
+})
+export const ListOrgMembersResponse = zod.array(ListOrgMembersResponseItem)
+
+
+/**
+ * @summary Change a member's role
+ */
+export const UpdateOrgMemberRoleParams = zod.object({
+  "organisationId": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const UpdateOrgMemberRoleBody = zod.object({
+  "role": zod.enum(['owner', 'pm', 'site_engineer', 'qs', 'finance', 'contractor', 'qc', 'store', 'hr', 'admin'])
+})
+
+export const UpdateOrgMemberRoleResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Remove a member from the organisation
+ */
+export const RemoveOrgMemberParams = zod.object({
+  "organisationId": zod.coerce.string(),
+  "userId": zod.coerce.string()
+})
+
+export const RemoveOrgMemberResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Mark the onboarding wizard as completed for this organisation
+ */
+export const CompleteOrgOnboardingParams = zod.object({
+  "organisationId": zod.coerce.string()
+})
+
+export const CompleteOrgOnboardingResponse = zod.object({
+  "success": zod.boolean()
+})
 
 
 export const UpdateProjectModulesParams = zod.object({

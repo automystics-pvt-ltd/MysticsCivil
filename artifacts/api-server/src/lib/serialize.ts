@@ -70,6 +70,7 @@ export function serializeOrg(o: any) {
     state: o.state ?? null,
     pincode: o.pincode ?? null,
     logoUrl: o.logoUrl ?? null,
+    onboardingCompletedAt: o.onboardingCompletedAt ? d(o.onboardingCompletedAt) : null,
     createdAt: dReq(o.createdAt),
   };
 }

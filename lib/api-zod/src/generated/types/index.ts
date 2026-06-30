@@ -138,6 +138,8 @@ export * from './getVendor200';
 export * from './getWorker200';
 export * from './gstEntry';
 export * from './healthStatus';
+export * from './invitationTokenDetail';
+export * from './invitationTokenDetailOrganisation';
 export * from './issue';
 export * from './issueInput';
 export * from './issueSeverity';

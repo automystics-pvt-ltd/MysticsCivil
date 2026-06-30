@@ -357,6 +357,246 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/OrganisationUser' }
+
+  /auth/register-tenant:
+    post:
+      tags: [Auth]
+      operationId: registerTenant
+      summary: Self-service tenant registration — creates user + org + free plan subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterTenantRequest'
+      responses:
+        '201':
+          description: Tenant created, session started.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterTenantResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Email already in use
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /invitations/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Invitations]
+      operationId: getInvitationByToken
+      summary: Validate an invitation token (public — no auth required)
+      responses:
+        '200':
+          description: Invitation details
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvitationTokenDetail' }
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '410':
+          description: Expired, accepted, or revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /invitations/{token}/accept:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Invitations]
+      operationId: acceptInvitation
+      summary: Accept an invitation. Creates account if needed, starts session.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcceptInvitationRequest' }
+      responses:
+        '200':
+          description: Invitation accepted, session started.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptInvitationResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '410':
+          description: Invitation no longer valid
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /organisations/{organisationId}/invitations:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    get:
+      tags: [Invitations]
+      operationId: listOrgInvitations
+      summary: List all invitations for an organisation
+      responses:
+        '200':
+          description: List of invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OrgInvitation' }
+    post:
+      tags: [Invitations]
+      operationId: createOrgInvitation
+      summary: Send an invitation to a new team member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrgInvitationInput' }
+      responses:
+        '201':
+          description: Invitation created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrgInvitation' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '403':
+          description: Plan limit reached
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Pending invitation already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /organisations/{organisationId}/invitations/{invitationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+      - name: invitationId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [Invitations]
+      operationId: revokeOrgInvitation
+      summary: Revoke a pending invitation
+      responses:
+        '200':
+          description: Revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+        '404':
+          description: Not found or already accepted/revoked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /organisations/{organisationId}/members:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    get:
+      tags: [Organisations]
+      operationId: listOrgMembers
+      summary: List all members of an organisation
+      responses:
+        '200':
+          description: Member list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OrgMember' }
+
+  /organisations/{organisationId}/members/{userId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+      - name: userId
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      tags: [Organisations]
+      operationId: updateOrgMemberRole
+      summary: Change a member's role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OrgMemberRoleUpdate' }
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+        '400':
+          description: Invalid role
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    delete:
+      tags: [Organisations]
+      operationId: removeOrgMember
+      summary: Remove a member from the organisation
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+        '400':
+          description: Cannot remove yourself
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: Member not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  /organisations/{organisationId}/onboarding/complete:
+    parameters:
+      - $ref: '#/components/parameters/OrganisationIdParam'
+    post:
+      tags: [Organisations]
+      operationId: completeOrgOnboarding
+      summary: Mark the onboarding wizard as completed for this organisation
+      responses:
+        '200':
+          description: Marked complete
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+
   /projects/{projectId}/modules:
     parameters:
       - $ref: '#/components/parameters/ProjectIdParam'
@@ -3388,6 +3628,117 @@ components:
       required: [success]
       properties:
         success: { type: boolean, const: true }
+    SuccessEnvelope:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, const: true }
+
+    RegisterTenantRequest:
+      type: object
+      required: [orgName, email, password, firstName]
+      properties:
+        orgName: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string }
+        industry: { type: string }
+    RegisterTenantResponse:
+      type: object
+      required: [user, organisation]
+      properties:
+        user:
+          type: object
+          required: [id, email]
+          properties:
+            id: { type: string }
+            email: { type: [string, 'null'] }
+            firstName: { type: [string, 'null'] }
+            lastName: { type: [string, 'null'] }
+        organisation:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+
+    InvitationTokenDetail:
+      type: object
+      required: [id, email, role, expiresAt, organisation]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string }
+        expiresAt: { type: string, format: date-time }
+        organisation:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+    AcceptInvitationRequest:
+      type: object
+      properties:
+        firstName: { type: string }
+        lastName: { type: string }
+        password: { type: string, minLength: 8 }
+    AcceptInvitationResponse:
+      type: object
+      required: [user, organisation]
+      properties:
+        user:
+          type: object
+          required: [id, email]
+          properties:
+            id: { type: string }
+            email: { type: [string, 'null'] }
+            firstName: { type: [string, 'null'] }
+            lastName: { type: [string, 'null'] }
+        organisation:
+          type: object
+          required: [id]
+          properties:
+            id: { type: string }
+
+    OrgInvitation:
+      type: object
+      required: [id, email, role, status, createdAt, expiresAt]
+      properties:
+        id: { type: string }
+        email: { type: string }
+        role: { type: string }
+        status: { type: string, enum: [pending, accepted, revoked, expired] }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        acceptedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
+    OrgInvitationInput:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/UserRole' }
+
+    OrgMember:
+      type: object
+      required: [userId, email, role, joinedAt]
+      properties:
+        userId: { type: string }
+        email: { type: [string, 'null'] }
+        firstName: { type: [string, 'null'] }
+        lastName: { type: [string, 'null'] }
+        profileImageUrl: { type: [string, 'null'] }
+        role: { type: string }
+        phone: { type: [string, 'null'] }
+        designation: { type: [string, 'null'] }
+        joinedAt: { type: string, format: date-time }
+    OrgMemberRoleUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: '#/components/schemas/UserRole' }
+
     ErrorEnvelope:
       type: object
       required: [error]
@@ -3467,6 +3818,7 @@ components:
         enabledModules:
           type: [array, 'null']
           items: { type: string }
+        onboardingCompletedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
     OrganisationInput:
       type: object

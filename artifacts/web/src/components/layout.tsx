@@ -83,6 +83,7 @@ function getNavGroups(role: string | undefined, enabledModules: Set<string> | nu
       items: [
         { titleKey: "nav.admin", url: "/admin", icon: ShieldCheck, roles: ["super_admin", "admin"] },
         { titleKey: "nav.organisations", url: "/organisations", icon: Users, roles: ["super_admin", "admin"] },
+        { titleKey: "nav.team", url: "/settings/team", icon: Users2, roles: ["owner", "admin", "super_admin"] },
         { titleKey: "nav.profile", url: "/profile", icon: Settings, roles: ALL_ROLES },
       ],
     },

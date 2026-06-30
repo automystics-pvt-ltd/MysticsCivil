@@ -27,5 +27,7 @@ export interface Organisation {
   logoUrl: string | null;
   /** @nullable */
   enabledModules?: string[] | null;
+  /** @nullable */
+  onboardingCompletedAt?: Date | null;
   createdAt: Date;
 }

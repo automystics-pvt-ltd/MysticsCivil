@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, organisationsTable, tenantSubscriptionsTable, subscriptionPlansTable, projectsTable, userProfilesTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, organisationsTable, tenantSubscriptionsTable, subscriptionPlansTable, projectsTable, userProfilesTable, usersTable, USER_ROLES } from "@workspace/db";
+import { eq, sql, and } from "drizzle-orm";
 import { requireAuth, requireRole, ROLE_GROUPS, loadRole } from "../middlewares/requireAuth";
 import { serializeOrg, serializeOrgPublic } from "../lib/serialize";
 import { getAccessCtx, isSuperAdmin } from "../lib/access";
@@ -248,6 +248,144 @@ router.patch(
       .returning();
 
     res.json({ success: true, subscriptionId: updated.id });
+  },
+);
+
+/**
+ * GET /organisations/:organisationId/members
+ * List all members of the organisation (user_profiles joined with users).
+ * Admin/owner only; super_admin may query any org.
+ */
+router.get(
+  "/organisations/:organisationId/members",
+  requireAuth,
+  requireRole("super_admin", "owner", "admin"),
+  async (req: Request, res: Response) => {
+    const { organisationId } = req.params;
+    const ctx = await getAccessCtx(req);
+    if (!isSuperAdmin(ctx.role) && ctx.organisationId !== organisationId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const rows = await db
+      .select({
+        userId: userProfilesTable.userId,
+        role: userProfilesTable.role,
+        organisationId: userProfilesTable.organisationId,
+        phone: userProfilesTable.phone,
+        designation: userProfilesTable.designation,
+        createdAt: userProfilesTable.createdAt,
+        email: usersTable.email,
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        profileImageUrl: usersTable.profileImageUrl,
+      })
+      .from(userProfilesTable)
+      .innerJoin(usersTable, eq(usersTable.id, userProfilesTable.userId))
+      .where(eq(userProfilesTable.organisationId, organisationId));
+
+    res.json(rows.map((r) => ({
+      userId: r.userId,
+      email: r.email,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      profileImageUrl: r.profileImageUrl,
+      role: r.role,
+      phone: r.phone,
+      designation: r.designation,
+      joinedAt: r.createdAt,
+    })));
+  },
+);
+
+/**
+ * PATCH /organisations/:organisationId/members/:userId
+ * Change a member's role. Admin/owner of same org or super_admin.
+ */
+router.patch(
+  "/organisations/:organisationId/members/:userId",
+  requireAuth,
+  requireRole("super_admin", "owner", "admin"),
+  async (req: Request, res: Response) => {
+    const { organisationId, userId } = req.params;
+    const ctx = await getAccessCtx(req);
+    if (!isSuperAdmin(ctx.role) && ctx.organisationId !== organisationId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    const role = String(req.body?.role ?? "");
+    if (!(USER_ROLES as readonly string[]).includes(role)) {
+      res.status(400).json({ error: `Invalid role: ${role}` });
+      return;
+    }
+    const [updated] = await db
+      .update(userProfilesTable)
+      .set({ role, updatedAt: new Date() } as any)
+      .where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.organisationId, organisationId)))
+      .returning({ userId: userProfilesTable.userId, role: userProfilesTable.role });
+    if (!updated) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+    res.json(updated);
+  },
+);
+
+/**
+ * DELETE /organisations/:organisationId/members/:userId
+ * Remove a member from the org (sets organisationId to null on their profile).
+ * Admin/owner of same org or super_admin.
+ */
+router.delete(
+  "/organisations/:organisationId/members/:userId",
+  requireAuth,
+  requireRole("super_admin", "owner", "admin"),
+  async (req: Request, res: Response) => {
+    const { organisationId, userId } = req.params;
+    const ctx = await getAccessCtx(req);
+    if (!isSuperAdmin(ctx.role) && ctx.organisationId !== organisationId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    // Cannot remove yourself
+    if (ctx.userId === userId) {
+      res.status(400).json({ error: "You cannot remove yourself from the organisation." });
+      return;
+    }
+    const [updated] = await db
+      .update(userProfilesTable)
+      .set({ organisationId: null, updatedAt: new Date() } as any)
+      .where(and(eq(userProfilesTable.userId, userId), eq(userProfilesTable.organisationId, organisationId)))
+      .returning({ userId: userProfilesTable.userId });
+    if (!updated) {
+      res.status(404).json({ error: "Member not found in this organisation" });
+      return;
+    }
+    res.json({ success: true });
+  },
+);
+
+/**
+ * POST /organisations/:organisationId/onboarding/complete
+ * Mark the onboarding wizard as completed for this org.
+ * Owner/admin of same org or super_admin.
+ */
+router.post(
+  "/organisations/:organisationId/onboarding/complete",
+  requireAuth,
+  requireRole("super_admin", "owner", "admin"),
+  async (req: Request, res: Response) => {
+    const { organisationId } = req.params;
+    const ctx = await getAccessCtx(req);
+    if (!isSuperAdmin(ctx.role) && ctx.organisationId !== organisationId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+    await db
+      .update(organisationsTable)
+      .set({ onboardingCompletedAt: new Date() } as any)
+      .where(eq(organisationsTable.id, organisationId));
+    res.json({ success: true });
   },
 );
 

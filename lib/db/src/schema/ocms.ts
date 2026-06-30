@@ -135,6 +135,8 @@ export const organisationsTable = pgTable("organisations", {
   enabledModules: jsonb("enabled_modules"),
   // null = unlimited. Otherwise enforced on POST /projects. Set by super_admin.
   maxProjects: integer("max_projects"),
+  // null = wizard not yet completed. Set on first skip or finish.
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type Organisation = typeof organisationsTable.$inferSelect;

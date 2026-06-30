@@ -45,7 +45,7 @@ function setSessionCookie(res: Response, sid: string) {
 router.post(
   "/organisations/:organisationId/invitations",
   requireAuth,
-  requireRole(...ROLE_GROUPS.ADMIN),
+  requireRole("super_admin", "owner", "admin"),
   async (req: Request, res: Response) => {
     const { organisationId } = req.params;
     const ctx = await getAccessCtx(req);
@@ -133,7 +133,7 @@ router.post(
 router.get(
   "/organisations/:organisationId/invitations",
   requireAuth,
-  requireRole(...ROLE_GROUPS.ADMIN),
+  requireRole("super_admin", "owner", "admin"),
   async (req: Request, res: Response) => {
     const { organisationId } = req.params;
     const ctx = await getAccessCtx(req);
@@ -168,7 +168,7 @@ router.get(
 router.delete(
   "/organisations/:organisationId/invitations/:invitationId",
   requireAuth,
-  requireRole(...ROLE_GROUPS.ADMIN),
+  requireRole("super_admin", "owner", "admin"),
   async (req: Request, res: Response) => {
     const { organisationId, invitationId } = req.params;
     const ctx = await getAccessCtx(req);

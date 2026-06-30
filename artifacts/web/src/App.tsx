@@ -8,6 +8,10 @@ import { Layout } from "@/components/layout";
 import { I18nProvider } from "@/lib/i18n";
 
 import Login from "@/pages/login";
+import Signup from "@/pages/signup";
+import Onboarding from "@/pages/onboarding";
+import JoinPage from "@/pages/join";
+import SettingsTeam from "@/pages/settings-team";
 import Dashboard from "@/pages/dashboard";
 import Projects from "@/pages/projects";
 import ProjectNew from "@/pages/project-new";
@@ -54,6 +58,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/join/:token" component={JoinPage} />
+      <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} />} />
+      <Route path="/settings/team" component={() => <ProtectedRoute component={SettingsTeam} />} />
       <Route path="/" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/projects" component={() => <ProtectedRoute component={Projects} />} />
       <Route path="/projects/new" component={() => <ProtectedRoute component={ProjectNew} />} />
