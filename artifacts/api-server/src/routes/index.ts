@@ -33,6 +33,7 @@ import quotationsRouter from "./quotations";
 import statusHistoryRouter from "./status-history";
 import invitationsRouter from "./invitations";
 import subscriptionPlansRouter from "./subscription-plans";
+import adminPlatformRouter from "./admin-platform";
 import { requireProjectAccess } from "../lib/access";
 
 const router: IRouter = Router();
@@ -79,5 +80,6 @@ router.use(preEstimationsRouter);
 router.use(quotationsRouter);
 router.use(statusHistoryRouter);
 router.use(invitationsRouter);
+router.use(adminPlatformRouter);
 
 export default router;

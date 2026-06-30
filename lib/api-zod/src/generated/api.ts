@@ -3993,3 +3993,243 @@ export const UpdateLabourContractorBillResponse = zod.object({
 })
 
 
+/**
+ * @summary List all tenants with subscription and usage info (super_admin only)
+ */
+export const ListAdminTenantsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "legalName": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "subscriptionStatus": zod.string(),
+  "planName": zod.string(),
+  "planSlug": zod.string(),
+  "planId": zod.string().optional(),
+  "userCount": zod.number(),
+  "projectCount": zod.number(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminTenantsResponse = zod.array(ListAdminTenantsResponseItem)
+
+
+/**
+ * @summary Get full tenant detail
+ */
+export const GetAdminTenantParams = zod.object({
+  "orgId": zod.coerce.string()
+})
+
+export const GetAdminTenantResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "legalName": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "subscriptionStatus": zod.string(),
+  "planName": zod.string(),
+  "planSlug": zod.string(),
+  "planId": zod.string().optional(),
+  "userCount": zod.number(),
+  "projectCount": zod.number(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Activate, suspend, or cancel a tenant
+ */
+export const UpdateAdminTenantStatusParams = zod.object({
+  "orgId": zod.coerce.string()
+})
+
+export const UpdateAdminTenantStatusBody = zod.object({
+  "status": zod.enum(['active', 'suspended', 'cancelled'])
+})
+
+export const UpdateAdminTenantStatusResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "legalName": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "logoUrl": zod.string().nullish(),
+  "subscriptionStatus": zod.string(),
+  "planName": zod.string(),
+  "planSlug": zod.string(),
+  "planId": zod.string().optional(),
+  "userCount": zod.number(),
+  "projectCount": zod.number(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Full subscription detail for a tenant
+ */
+export const GetAdminTenantSubscriptionParams = zod.object({
+  "orgId": zod.coerce.string()
+})
+
+export const GetAdminTenantSubscriptionResponse = zod.object({
+  "subscriptionId": zod.string().nullish(),
+  "organisationId": zod.string(),
+  "orgName": zod.string(),
+  "planId": zod.string(),
+  "planName": zod.string(),
+  "planSlug": zod.string(),
+  "status": zod.string(),
+  "priceMonthly": zod.string(),
+  "limits": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}),
+  "limitsOverride": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}).nullish(),
+  "features": zod.object({
+
+}).passthrough(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "currentPeriodStart": zod.coerce.date().nullish(),
+  "currentPeriodEnd": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "userCount": zod.number().optional(),
+  "projectCount": zod.number().optional(),
+  "availablePlans": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "priceMonthly": zod.string()
+})).optional()
+})
+
+
+/**
+ * @summary Change plan, set limits override, or adjust trial/period dates
+ */
+export const UpdateAdminTenantSubscriptionParams = zod.object({
+  "orgId": zod.coerce.string()
+})
+
+export const UpdateAdminTenantSubscriptionBody = zod.object({
+  "planId": zod.string().optional(),
+  "status": zod.enum(['trialing', 'active', 'past_due', 'cancelled', 'suspended']).optional(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "currentPeriodStart": zod.coerce.date().nullish(),
+  "currentPeriodEnd": zod.coerce.date().nullish(),
+  "limitsOverride": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}).nullish()
+})
+
+export const UpdateAdminTenantSubscriptionResponse = zod.object({
+  "subscriptionId": zod.string().nullish(),
+  "organisationId": zod.string(),
+  "orgName": zod.string(),
+  "planId": zod.string(),
+  "planName": zod.string(),
+  "planSlug": zod.string(),
+  "status": zod.string(),
+  "priceMonthly": zod.string(),
+  "limits": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}),
+  "limitsOverride": zod.object({
+  "maxProjects": zod.number().nullish(),
+  "maxUsers": zod.number().nullish(),
+  "maxStorageGb": zod.number().nullish()
+}).nullish(),
+  "features": zod.object({
+
+}).passthrough(),
+  "trialEndsAt": zod.coerce.date().nullish(),
+  "currentPeriodStart": zod.coerce.date().nullish(),
+  "currentPeriodEnd": zod.coerce.date().nullish(),
+  "cancelledAt": zod.coerce.date().nullish(),
+  "userCount": zod.number().optional(),
+  "projectCount": zod.number().optional(),
+  "availablePlans": zod.array(zod.object({
+  "id": zod.string(),
+  "slug": zod.string(),
+  "name": zod.string(),
+  "priceMonthly": zod.string()
+})).optional()
+})
+
+
+/**
+ * @summary All tenant invitations across all orgs (super_admin only)
+ */
+export const ListAdminInvitationsQueryParams = zod.object({
+  "status": zod.coerce.string().optional(),
+  "orgId": zod.coerce.string().optional()
+})
+
+export const ListAdminInvitationsResponseItem = zod.object({
+  "id": zod.string(),
+  "organisationId": zod.string(),
+  "orgName": zod.string(),
+  "email": zod.string(),
+  "role": zod.string(),
+  "token": zod.string(),
+  "status": zod.enum(['pending', 'accepted', 'revoked', 'expired']).optional(),
+  "acceptedAt": zod.coerce.date().nullish(),
+  "revokedAt": zod.coerce.date().nullish(),
+  "expiresAt": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminInvitationsResponse = zod.array(ListAdminInvitationsResponseItem)
+
+
+/**
+ * @summary All custom roles across all orgs (super_admin only)
+ */
+export const ListAdminCustomRolesResponseItem = zod.object({
+  "id": zod.string(),
+  "organisationId": zod.string(),
+  "orgName": zod.string(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "permissions": zod.object({
+
+}).passthrough().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminCustomRolesResponse = zod.array(ListAdminCustomRolesResponseItem)
+
+
+/**
+ * @summary Platform-wide aggregate statistics (super_admin only)
+ */
+export const GetAdminSystemStatsResponse = zod.object({
+  "totalTenants": zod.number(),
+  "activeTenants": zod.number(),
+  "suspendedTenants": zod.number(),
+  "trialingTenants": zod.number().optional(),
+  "totalUsers": zod.number(),
+  "totalProjects": zod.number(),
+  "dprsLast30Days": zod.number(),
+  "newTenantsLast30Days": zod.number(),
+  "signupsByDay": zod.array(zod.object({
+  "date": zod.string(),
+  "count": zod.number()
+})).optional()
+})
+
+

@@ -1693,6 +1693,196 @@ export interface LabourContractorBill {
   createdAt?: string;
 }
 
+export interface AdminTenant {
+  id: string;
+  name: string;
+  /** @nullable */
+  legalName?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  logoUrl?: string | null;
+  subscriptionStatus: string;
+  planName: string;
+  planSlug: string;
+  planId?: string;
+  userCount: number;
+  projectCount: number;
+  /** @nullable */
+  trialEndsAt?: string | null;
+  /** @nullable */
+  cancelledAt?: string | null;
+  createdAt: string;
+}
+
+export type AdminTenantSubscriptionDetailLimits = {
+  /** @nullable */
+  maxProjects?: number | null;
+  /** @nullable */
+  maxUsers?: number | null;
+  /** @nullable */
+  maxStorageGb?: number | null;
+};
+
+/**
+ * @nullable
+ */
+export type AdminTenantSubscriptionDetailLimitsOverride = {
+  /** @nullable */
+  maxProjects?: number | null;
+  /** @nullable */
+  maxUsers?: number | null;
+  /** @nullable */
+  maxStorageGb?: number | null;
+} | null;
+
+export type AdminTenantSubscriptionDetailFeatures = { [key: string]: unknown };
+
+export type AdminTenantSubscriptionDetailAvailablePlansItem = {
+  id: string;
+  slug: string;
+  name: string;
+  priceMonthly: string;
+};
+
+export interface AdminTenantSubscriptionDetail {
+  /** @nullable */
+  subscriptionId?: string | null;
+  organisationId: string;
+  orgName: string;
+  planId: string;
+  planName: string;
+  planSlug: string;
+  status: string;
+  priceMonthly: string;
+  limits: AdminTenantSubscriptionDetailLimits;
+  /** @nullable */
+  limitsOverride?: AdminTenantSubscriptionDetailLimitsOverride;
+  features: AdminTenantSubscriptionDetailFeatures;
+  /** @nullable */
+  trialEndsAt?: string | null;
+  /** @nullable */
+  currentPeriodStart?: string | null;
+  /** @nullable */
+  currentPeriodEnd?: string | null;
+  /** @nullable */
+  cancelledAt?: string | null;
+  userCount?: number;
+  projectCount?: number;
+  availablePlans?: AdminTenantSubscriptionDetailAvailablePlansItem[];
+}
+
+export type AdminTenantStatusUpdateStatus = typeof AdminTenantStatusUpdateStatus[keyof typeof AdminTenantStatusUpdateStatus];
+
+
+export const AdminTenantStatusUpdateStatus = {
+  active: 'active',
+  suspended: 'suspended',
+  cancelled: 'cancelled',
+} as const;
+
+export interface AdminTenantStatusUpdate {
+  status: AdminTenantStatusUpdateStatus;
+}
+
+export type AdminTenantSubscriptionUpdateStatus = typeof AdminTenantSubscriptionUpdateStatus[keyof typeof AdminTenantSubscriptionUpdateStatus];
+
+
+export const AdminTenantSubscriptionUpdateStatus = {
+  trialing: 'trialing',
+  active: 'active',
+  past_due: 'past_due',
+  cancelled: 'cancelled',
+  suspended: 'suspended',
+} as const;
+
+/**
+ * @nullable
+ */
+export type AdminTenantSubscriptionUpdateLimitsOverride = {
+  /** @nullable */
+  maxProjects?: number | null;
+  /** @nullable */
+  maxUsers?: number | null;
+  /** @nullable */
+  maxStorageGb?: number | null;
+} | null;
+
+export interface AdminTenantSubscriptionUpdate {
+  planId?: string;
+  status?: AdminTenantSubscriptionUpdateStatus;
+  /** @nullable */
+  trialEndsAt?: string | null;
+  /** @nullable */
+  currentPeriodStart?: string | null;
+  /** @nullable */
+  currentPeriodEnd?: string | null;
+  /** @nullable */
+  limitsOverride?: AdminTenantSubscriptionUpdateLimitsOverride;
+}
+
+export type AdminInvitationStatus = typeof AdminInvitationStatus[keyof typeof AdminInvitationStatus];
+
+
+export const AdminInvitationStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  revoked: 'revoked',
+  expired: 'expired',
+} as const;
+
+export interface AdminInvitation {
+  id: string;
+  organisationId: string;
+  orgName: string;
+  email: string;
+  role: string;
+  token: string;
+  status?: AdminInvitationStatus;
+  /** @nullable */
+  acceptedAt?: string | null;
+  /** @nullable */
+  revokedAt?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type AdminCustomRolePermissions = { [key: string]: unknown } | null;
+
+export interface AdminCustomRole {
+  id: string;
+  organisationId: string;
+  orgName: string;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  permissions?: AdminCustomRolePermissions;
+  createdAt: string;
+}
+
+export type AdminSystemStatsSignupsByDayItem = {
+  date: string;
+  count: number;
+};
+
+export interface AdminSystemStats {
+  totalTenants: number;
+  activeTenants: number;
+  suspendedTenants: number;
+  trialingTenants?: number;
+  totalUsers: number;
+  totalProjects: number;
+  dprsLast30Days: number;
+  newTenantsLast30Days: number;
+  signupsByDay?: AdminSystemStatsSignupsByDayItem[];
+}
+
 export type AuthorizationSessionHeaderParameter = string;
 
 export type ListModules200 = {
@@ -2368,4 +2558,9 @@ export type CreateLabourContractorBillBody = { [key: string]: unknown };
 export type GetLabourContractorBill200 = { [key: string]: unknown };
 
 export type UpdateLabourContractorBillBody = { [key: string]: unknown };
+
+export type ListAdminInvitationsParams = {
+status?: string;
+orgId?: string;
+};
 

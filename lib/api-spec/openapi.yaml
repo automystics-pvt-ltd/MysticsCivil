@@ -3179,6 +3179,127 @@ paths:
       responses:
         "200": { description: Updated, content: { application/json: { schema: { $ref: '#/components/schemas/LabourContractorBill' } } } }
 
+  # ── Platform Admin ──────────────────────────────────────────────────────────
+  /admin/tenants:
+    get:
+      operationId: listAdminTenants
+      tags: [PlatformAdmin]
+      summary: List all tenants with subscription and usage info (super_admin only)
+      responses:
+        "200":
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminTenant' }
+
+  /admin/tenants/{orgId}:
+    parameters:
+      - { in: path, name: orgId, required: true, schema: { type: string } }
+    get:
+      operationId: getAdminTenant
+      tags: [PlatformAdmin]
+      summary: Get full tenant detail
+      responses:
+        "200":
+          description: Tenant detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTenant' }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    patch:
+      operationId: updateAdminTenantStatus
+      tags: [PlatformAdmin]
+      summary: Activate, suspend, or cancel a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminTenantStatusUpdate' }
+      responses:
+        "200":
+          description: Updated tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTenant' }
+
+  /admin/tenants/{orgId}/subscription:
+    parameters:
+      - { in: path, name: orgId, required: true, schema: { type: string } }
+    get:
+      operationId: getAdminTenantSubscription
+      tags: [PlatformAdmin]
+      summary: Full subscription detail for a tenant
+      responses:
+        "200":
+          description: Subscription detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTenantSubscriptionDetail' }
+    patch:
+      operationId: updateAdminTenantSubscription
+      tags: [PlatformAdmin]
+      summary: Change plan, set limits override, or adjust trial/period dates
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminTenantSubscriptionUpdate' }
+      responses:
+        "200":
+          description: Updated subscription detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTenantSubscriptionDetail' }
+
+  /admin/invitations:
+    get:
+      operationId: listAdminInvitations
+      tags: [PlatformAdmin]
+      summary: All tenant invitations across all orgs (super_admin only)
+      parameters:
+        - { in: query, name: status, required: false, schema: { type: string } }
+        - { in: query, name: orgId, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminInvitation' }
+
+  /admin/custom-roles:
+    get:
+      operationId: listAdminCustomRoles
+      tags: [PlatformAdmin]
+      summary: All custom roles across all orgs (super_admin only)
+      responses:
+        "200":
+          description: Custom roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminCustomRole' }
+
+  /admin/system-stats:
+    get:
+      operationId: getAdminSystemStats
+      tags: [PlatformAdmin]
+      summary: Platform-wide aggregate statistics (super_admin only)
+      responses:
+        "200":
+          description: System stats
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSystemStats' }
+
 components:
   parameters:
     AuthorizationSessionHeader:
@@ -4690,3 +4811,136 @@ components:
         approvedAt: { type: string, format: date-time, nullable: true }
         rejectionReason: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
+
+    # ── Platform Admin ─────────────────────────────────────────────────────────
+    AdminTenant:
+      type: object
+      required: [id, name, subscriptionStatus, planName, planSlug, userCount, projectCount, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        legalName: { type: ["string", "null"] }
+        city: { type: ["string", "null"] }
+        state: { type: ["string", "null"] }
+        logoUrl: { type: ["string", "null"] }
+        subscriptionStatus: { type: string }
+        planName: { type: string }
+        planSlug: { type: string }
+        planId: { type: string }
+        userCount: { type: integer }
+        projectCount: { type: integer }
+        trialEndsAt: { type: ["string", "null"], format: date-time }
+        cancelledAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    AdminTenantSubscriptionDetail:
+      type: object
+      required: [organisationId, orgName, planId, planName, planSlug, status, priceMonthly, limits, features]
+      properties:
+        subscriptionId: { type: ["string", "null"] }
+        organisationId: { type: string }
+        orgName: { type: string }
+        planId: { type: string }
+        planName: { type: string }
+        planSlug: { type: string }
+        status: { type: string }
+        priceMonthly: { type: string }
+        limits:
+          type: object
+          properties:
+            maxProjects: { type: ["integer", "null"] }
+            maxUsers: { type: ["integer", "null"] }
+            maxStorageGb: { type: ["integer", "null"] }
+        limitsOverride:
+          type: ["object", "null"]
+          properties:
+            maxProjects: { type: ["integer", "null"] }
+            maxUsers: { type: ["integer", "null"] }
+            maxStorageGb: { type: ["integer", "null"] }
+        features: { type: object }
+        trialEndsAt: { type: ["string", "null"], format: date-time }
+        currentPeriodStart: { type: ["string", "null"], format: date-time }
+        currentPeriodEnd: { type: ["string", "null"], format: date-time }
+        cancelledAt: { type: ["string", "null"], format: date-time }
+        userCount: { type: integer }
+        projectCount: { type: integer }
+        availablePlans:
+          type: array
+          items:
+            type: object
+            required: [id, slug, name, priceMonthly]
+            properties:
+              id: { type: string }
+              slug: { type: string }
+              name: { type: string }
+              priceMonthly: { type: string }
+
+    AdminTenantStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended, cancelled] }
+
+    AdminTenantSubscriptionUpdate:
+      type: object
+      properties:
+        planId: { type: string }
+        status: { type: string, enum: [trialing, active, past_due, cancelled, suspended] }
+        trialEndsAt: { type: ["string", "null"], format: date-time }
+        currentPeriodStart: { type: ["string", "null"], format: date-time }
+        currentPeriodEnd: { type: ["string", "null"], format: date-time }
+        limitsOverride:
+          type: ["object", "null"]
+          properties:
+            maxProjects: { type: ["integer", "null"] }
+            maxUsers: { type: ["integer", "null"] }
+            maxStorageGb: { type: ["integer", "null"] }
+
+    AdminInvitation:
+      type: object
+      required: [id, organisationId, orgName, email, role, token, expiresAt, createdAt]
+      properties:
+        id: { type: string }
+        organisationId: { type: string }
+        orgName: { type: string }
+        email: { type: string }
+        role: { type: string }
+        token: { type: string }
+        status: { type: string, enum: [pending, accepted, revoked, expired] }
+        acceptedAt: { type: ["string", "null"], format: date-time }
+        revokedAt: { type: ["string", "null"], format: date-time }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    AdminCustomRole:
+      type: object
+      required: [id, organisationId, orgName, name, createdAt]
+      properties:
+        id: { type: string }
+        organisationId: { type: string }
+        orgName: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        permissions: { type: ["object", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    AdminSystemStats:
+      type: object
+      required: [totalTenants, activeTenants, suspendedTenants, totalUsers, totalProjects, dprsLast30Days, newTenantsLast30Days]
+      properties:
+        totalTenants: { type: integer }
+        activeTenants: { type: integer }
+        suspendedTenants: { type: integer }
+        trialingTenants: { type: integer }
+        totalUsers: { type: integer }
+        totalProjects: { type: integer }
+        dprsLast30Days: { type: integer }
+        newTenantsLast30Days: { type: integer }
+        signupsByDay:
+          type: array
+          items:
+            type: object
+            required: [date, count]
+            properties:
+              date: { type: string }
+              count: { type: integer }

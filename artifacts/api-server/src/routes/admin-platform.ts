@@ -1,0 +1,520 @@
+import { Router, type IRouter, type Request, type Response } from "express";
+import {
+  db,
+  usersTable,
+  userProfilesTable,
+  organisationsTable,
+  projectsTable,
+  customRolesTable,
+  subscriptionPlansTable,
+  tenantSubscriptionsTable,
+  tenantInvitationsTable,
+  dprsTable,
+} from "@workspace/db";
+import { eq, sql, count, and, gte, desc } from "drizzle-orm";
+import { requireAuth } from "../middlewares/requireAuth";
+import { isSuperAdmin } from "../lib/access";
+
+const router: IRouter = Router();
+
+async function assertSuperAdmin(req: Request, res: Response): Promise<boolean> {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthenticated" });
+    return false;
+  }
+  const [profile] = await db
+    .select({ role: userProfilesTable.role })
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId))
+    .limit(1);
+  if (!isSuperAdmin(profile?.role ?? null)) {
+    res.status(403).json({ error: "Super admin access required" });
+    return false;
+  }
+  return true;
+}
+
+// ── Shared: build AdminTenant row ──────────────────────────────────────────
+
+async function buildAdminTenants(where?: Parameters<typeof db.select>[0]) {
+  const rows = await db
+    .select({
+      id: organisationsTable.id,
+      name: organisationsTable.name,
+      legalName: organisationsTable.legalName,
+      city: organisationsTable.city,
+      state: organisationsTable.state,
+      logoUrl: organisationsTable.logoUrl,
+      orgCreatedAt: organisationsTable.createdAt,
+      subStatus: tenantSubscriptionsTable.status,
+      subTrialEndsAt: tenantSubscriptionsTable.trialEndsAt,
+      subCancelledAt: tenantSubscriptionsTable.cancelledAt,
+      planId: subscriptionPlansTable.id,
+      planName: subscriptionPlansTable.name,
+      planSlug: subscriptionPlansTable.slug,
+    })
+    .from(organisationsTable)
+    .leftJoin(
+      tenantSubscriptionsTable,
+      eq(tenantSubscriptionsTable.organisationId, organisationsTable.id),
+    )
+    .leftJoin(
+      subscriptionPlansTable,
+      eq(subscriptionPlansTable.id, tenantSubscriptionsTable.planId),
+    );
+
+  const orgIds = rows.map((r) => r.id);
+
+  if (orgIds.length === 0) return [];
+
+  const userCounts = await db
+    .select({
+      organisationId: userProfilesTable.organisationId,
+      cnt: count(userProfilesTable.userId),
+    })
+    .from(userProfilesTable)
+    .groupBy(userProfilesTable.organisationId);
+
+  const projectCounts = await db
+    .select({
+      organisationId: projectsTable.organisationId,
+      cnt: count(projectsTable.id),
+    })
+    .from(projectsTable)
+    .groupBy(projectsTable.organisationId);
+
+  const userMap = new Map(userCounts.map((r) => [r.organisationId, Number(r.cnt)]));
+  const projMap = new Map(projectCounts.map((r) => [r.organisationId, Number(r.cnt)]));
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    legalName: r.legalName ?? null,
+    city: r.city ?? null,
+    state: r.state ?? null,
+    logoUrl: r.logoUrl ?? null,
+    subscriptionStatus: r.subStatus ?? "active",
+    planId: r.planId ?? "",
+    planName: r.planName ?? "Free",
+    planSlug: r.planSlug ?? "free",
+    userCount: userMap.get(r.id) ?? 0,
+    projectCount: projMap.get(r.id) ?? 0,
+    trialEndsAt: r.subTrialEndsAt?.toISOString() ?? null,
+    cancelledAt: r.subCancelledAt?.toISOString() ?? null,
+    createdAt: r.orgCreatedAt.toISOString(),
+  }));
+}
+
+// ── GET /admin/tenants ─────────────────────────────────────────────────────
+
+router.get("/admin/tenants", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const tenants = await buildAdminTenants();
+  res.json(tenants);
+});
+
+// ── GET /admin/tenants/:orgId ──────────────────────────────────────────────
+
+router.get("/admin/tenants/:orgId", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { orgId } = req.params;
+  const all = await buildAdminTenants();
+  const tenant = all.find((t) => t.id === orgId);
+  if (!tenant) {
+    res.status(404).json({ error: "Tenant not found" });
+    return;
+  }
+  res.json(tenant);
+});
+
+// ── PATCH /admin/tenants/:orgId (status: active | suspended | cancelled) ──
+
+router.patch("/admin/tenants/:orgId", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { orgId } = req.params;
+  const { status } = req.body as { status: string };
+  const ALLOWED = ["active", "suspended", "cancelled"];
+  if (!status || !ALLOWED.includes(status)) {
+    res.status(400).json({ error: `status must be one of: ${ALLOWED.join(", ")}` });
+    return;
+  }
+
+  const [sub] = await db
+    .select({ id: tenantSubscriptionsTable.id })
+    .from(tenantSubscriptionsTable)
+    .where(eq(tenantSubscriptionsTable.organisationId, orgId))
+    .limit(1);
+
+  if (!sub) {
+    res.status(404).json({ error: "Tenant or subscription not found" });
+    return;
+  }
+
+  const updateData: Record<string, unknown> = {
+    status,
+    updatedAt: new Date(),
+  };
+  if (status === "cancelled") {
+    updateData.cancelledAt = new Date();
+  }
+
+  await db
+    .update(tenantSubscriptionsTable)
+    .set(updateData as any)
+    .where(eq(tenantSubscriptionsTable.id, sub.id));
+
+  const all = await buildAdminTenants();
+  const tenant = all.find((t) => t.id === orgId);
+  if (!tenant) {
+    res.status(404).json({ error: "Tenant not found after update" });
+    return;
+  }
+  res.json(tenant);
+});
+
+// ── GET /admin/tenants/:orgId/subscription ─────────────────────────────────
+
+router.get(
+  "/admin/tenants/:orgId/subscription",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    if (!(await assertSuperAdmin(req, res))) return;
+    const { orgId } = req.params;
+
+    const [org] = await db
+      .select({ id: organisationsTable.id, name: organisationsTable.name })
+      .from(organisationsTable)
+      .where(eq(organisationsTable.id, orgId))
+      .limit(1);
+
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const [sub] = await db
+      .select()
+      .from(tenantSubscriptionsTable)
+      .leftJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, tenantSubscriptionsTable.planId))
+      .where(eq(tenantSubscriptionsTable.organisationId, orgId))
+      .limit(1);
+
+    const [userCount] = await db
+      .select({ cnt: count(userProfilesTable.userId) })
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.organisationId, orgId));
+
+    const [projectCount] = await db
+      .select({ cnt: count(projectsTable.id) })
+      .from(projectsTable)
+      .where(eq(projectsTable.organisationId, orgId));
+
+    const allPlans = await db
+      .select({ id: subscriptionPlansTable.id, slug: subscriptionPlansTable.slug, name: subscriptionPlansTable.name, priceMonthly: subscriptionPlansTable.priceMonthly })
+      .from(subscriptionPlansTable)
+      .where(eq(subscriptionPlansTable.isActive, true))
+      .orderBy(subscriptionPlansTable.sortOrder);
+
+    const ts = sub?.tenant_subscriptions;
+    const sp = sub?.subscription_plans;
+
+    res.json({
+      subscriptionId: ts?.id ?? null,
+      organisationId: org.id,
+      orgName: org.name,
+      planId: ts?.planId ?? "",
+      planName: sp?.name ?? "Free",
+      planSlug: sp?.slug ?? "free",
+      status: ts?.status ?? "active",
+      priceMonthly: sp?.priceMonthly ?? "0",
+      limits: sp?.limits ?? { maxProjects: 3, maxUsers: 5, maxStorageGb: 1 },
+      limitsOverride: ts?.limitsOverride ?? null,
+      features: sp?.features ?? {},
+      trialEndsAt: ts?.trialEndsAt?.toISOString() ?? null,
+      currentPeriodStart: ts?.currentPeriodStart?.toISOString() ?? null,
+      currentPeriodEnd: ts?.currentPeriodEnd?.toISOString() ?? null,
+      cancelledAt: ts?.cancelledAt?.toISOString() ?? null,
+      userCount: Number(userCount?.cnt ?? 0),
+      projectCount: Number(projectCount?.cnt ?? 0),
+      availablePlans: allPlans.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        priceMonthly: p.priceMonthly,
+      })),
+    });
+  },
+);
+
+// ── PATCH /admin/tenants/:orgId/subscription ───────────────────────────────
+
+router.patch(
+  "/admin/tenants/:orgId/subscription",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    if (!(await assertSuperAdmin(req, res))) return;
+    const { orgId } = req.params;
+
+    const [org] = await db
+      .select({ id: organisationsTable.id })
+      .from(organisationsTable)
+      .where(eq(organisationsTable.id, orgId))
+      .limit(1);
+
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const body = req.body as {
+      planId?: string;
+      status?: string;
+      trialEndsAt?: string | null;
+      currentPeriodStart?: string | null;
+      currentPeriodEnd?: string | null;
+      limitsOverride?: { maxProjects?: number | null; maxUsers?: number | null; maxStorageGb?: number | null } | null;
+    };
+
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (body.planId !== undefined) updates.planId = body.planId;
+    if (body.status !== undefined) updates.status = body.status;
+    if (body.trialEndsAt !== undefined)
+      updates.trialEndsAt = body.trialEndsAt ? new Date(body.trialEndsAt) : null;
+    if (body.currentPeriodStart !== undefined)
+      updates.currentPeriodStart = body.currentPeriodStart ? new Date(body.currentPeriodStart) : null;
+    if (body.currentPeriodEnd !== undefined)
+      updates.currentPeriodEnd = body.currentPeriodEnd ? new Date(body.currentPeriodEnd) : null;
+    if (body.limitsOverride !== undefined) updates.limitsOverride = body.limitsOverride;
+
+    const [existing] = await db
+      .select({ id: tenantSubscriptionsTable.id })
+      .from(tenantSubscriptionsTable)
+      .where(eq(tenantSubscriptionsTable.organisationId, orgId))
+      .limit(1);
+
+    if (existing) {
+      await db
+        .update(tenantSubscriptionsTable)
+        .set(updates as any)
+        .where(eq(tenantSubscriptionsTable.id, existing.id));
+    } else {
+      res.status(404).json({ error: "No subscription found for this tenant" });
+      return;
+    }
+
+    // Return the updated detail via the GET handler logic (inline)
+    const [sub] = await db
+      .select()
+      .from(tenantSubscriptionsTable)
+      .leftJoin(subscriptionPlansTable, eq(subscriptionPlansTable.id, tenantSubscriptionsTable.planId))
+      .where(eq(tenantSubscriptionsTable.organisationId, orgId))
+      .limit(1);
+
+    const [orgFull] = await db
+      .select({ name: organisationsTable.name })
+      .from(organisationsTable)
+      .where(eq(organisationsTable.id, orgId))
+      .limit(1);
+
+    const [userCount] = await db
+      .select({ cnt: count(userProfilesTable.userId) })
+      .from(userProfilesTable)
+      .where(eq(userProfilesTable.organisationId, orgId));
+
+    const [projectCount] = await db
+      .select({ cnt: count(projectsTable.id) })
+      .from(projectsTable)
+      .where(eq(projectsTable.organisationId, orgId));
+
+    const allPlans = await db
+      .select({ id: subscriptionPlansTable.id, slug: subscriptionPlansTable.slug, name: subscriptionPlansTable.name, priceMonthly: subscriptionPlansTable.priceMonthly })
+      .from(subscriptionPlansTable)
+      .where(eq(subscriptionPlansTable.isActive, true))
+      .orderBy(subscriptionPlansTable.sortOrder);
+
+    const ts = sub?.tenant_subscriptions;
+    const sp = sub?.subscription_plans;
+
+    res.json({
+      subscriptionId: ts?.id ?? null,
+      organisationId: orgId,
+      orgName: orgFull?.name ?? "",
+      planId: ts?.planId ?? "",
+      planName: sp?.name ?? "Free",
+      planSlug: sp?.slug ?? "free",
+      status: ts?.status ?? "active",
+      priceMonthly: sp?.priceMonthly ?? "0",
+      limits: sp?.limits ?? {},
+      limitsOverride: ts?.limitsOverride ?? null,
+      features: sp?.features ?? {},
+      trialEndsAt: ts?.trialEndsAt?.toISOString() ?? null,
+      currentPeriodStart: ts?.currentPeriodStart?.toISOString() ?? null,
+      currentPeriodEnd: ts?.currentPeriodEnd?.toISOString() ?? null,
+      cancelledAt: ts?.cancelledAt?.toISOString() ?? null,
+      userCount: Number(userCount?.cnt ?? 0),
+      projectCount: Number(projectCount?.cnt ?? 0),
+      availablePlans: allPlans.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        priceMonthly: p.priceMonthly,
+      })),
+    });
+  },
+);
+
+// ── GET /admin/invitations ─────────────────────────────────────────────────
+
+router.get("/admin/invitations", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+
+  const { status: filterStatus, orgId: filterOrgId } = req.query as {
+    status?: string;
+    orgId?: string;
+  };
+
+  const rows = await db
+    .select({
+      id: tenantInvitationsTable.id,
+      organisationId: tenantInvitationsTable.organisationId,
+      orgName: organisationsTable.name,
+      email: tenantInvitationsTable.email,
+      role: tenantInvitationsTable.role,
+      token: tenantInvitationsTable.token,
+      acceptedAt: tenantInvitationsTable.acceptedAt,
+      revokedAt: tenantInvitationsTable.revokedAt,
+      expiresAt: tenantInvitationsTable.expiresAt,
+      createdAt: tenantInvitationsTable.createdAt,
+    })
+    .from(tenantInvitationsTable)
+    .leftJoin(organisationsTable, eq(organisationsTable.id, tenantInvitationsTable.organisationId))
+    .orderBy(desc(tenantInvitationsTable.createdAt));
+
+  const now = new Date();
+
+  const mapped = rows
+    .map((r) => {
+      let computedStatus: string;
+      if (r.revokedAt) computedStatus = "revoked";
+      else if (r.acceptedAt) computedStatus = "accepted";
+      else if (r.expiresAt < now) computedStatus = "expired";
+      else computedStatus = "pending";
+
+      return {
+        id: r.id,
+        organisationId: r.organisationId,
+        orgName: r.orgName ?? "Unknown",
+        email: r.email,
+        role: r.role,
+        token: r.token,
+        status: computedStatus,
+        acceptedAt: r.acceptedAt?.toISOString() ?? null,
+        revokedAt: r.revokedAt?.toISOString() ?? null,
+        expiresAt: r.expiresAt.toISOString(),
+        createdAt: r.createdAt.toISOString(),
+      };
+    })
+    .filter((r) => {
+      if (filterStatus && r.status !== filterStatus) return false;
+      if (filterOrgId && r.organisationId !== filterOrgId) return false;
+      return true;
+    });
+
+  res.json(mapped);
+});
+
+// ── GET /admin/custom-roles ────────────────────────────────────────────────
+
+router.get("/admin/custom-roles", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+
+  const rows = await db
+    .select({
+      id: customRolesTable.id,
+      organisationId: customRolesTable.organisationId,
+      orgName: organisationsTable.name,
+      name: customRolesTable.name,
+      description: customRolesTable.description,
+      permissions: customRolesTable.permissions,
+      createdAt: customRolesTable.createdAt,
+    })
+    .from(customRolesTable)
+    .leftJoin(organisationsTable, eq(organisationsTable.id, customRolesTable.organisationId))
+    .orderBy(desc(customRolesTable.createdAt));
+
+  res.json(
+    rows.map((r) => ({
+      id: r.id,
+      organisationId: r.organisationId,
+      orgName: r.orgName ?? "Unknown",
+      name: r.name,
+      description: r.description ?? null,
+      permissions: r.permissions ?? null,
+      createdAt: r.createdAt.toISOString(),
+    })),
+  );
+});
+
+// ── GET /admin/system-stats ────────────────────────────────────────────────
+
+router.get("/admin/system-stats", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [[totalTenants], [activeTenants], [suspendedTenants], [trialingTenants], [totalUsers], [totalProjects], [dprsLast30], [newTenants]] =
+    await Promise.all([
+      db.select({ cnt: count(organisationsTable.id) }).from(organisationsTable),
+      db
+        .select({ cnt: count(tenantSubscriptionsTable.id) })
+        .from(tenantSubscriptionsTable)
+        .where(eq(tenantSubscriptionsTable.status, "active")),
+      db
+        .select({ cnt: count(tenantSubscriptionsTable.id) })
+        .from(tenantSubscriptionsTable)
+        .where(eq(tenantSubscriptionsTable.status, "suspended")),
+      db
+        .select({ cnt: count(tenantSubscriptionsTable.id) })
+        .from(tenantSubscriptionsTable)
+        .where(eq(tenantSubscriptionsTable.status, "trialing")),
+      db.select({ cnt: count(usersTable.id) }).from(usersTable),
+      db.select({ cnt: count(projectsTable.id) }).from(projectsTable),
+      db
+        .select({ cnt: count(dprsTable.id) })
+        .from(dprsTable)
+        .where(gte(dprsTable.createdAt, thirtyDaysAgo)),
+      db
+        .select({ cnt: count(organisationsTable.id) })
+        .from(organisationsTable)
+        .where(gte(organisationsTable.createdAt, thirtyDaysAgo)),
+    ]);
+
+  const signupsByDayRaw = await db
+    .select({
+      date: sql<string>`to_char(${organisationsTable.createdAt}, 'YYYY-MM-DD')`,
+      count: count(organisationsTable.id),
+    })
+    .from(organisationsTable)
+    .where(gte(organisationsTable.createdAt, thirtyDaysAgo))
+    .groupBy(sql`to_char(${organisationsTable.createdAt}, 'YYYY-MM-DD')`)
+    .orderBy(sql`to_char(${organisationsTable.createdAt}, 'YYYY-MM-DD')`);
+
+  res.json({
+    totalTenants: Number(totalTenants?.cnt ?? 0),
+    activeTenants: Number(activeTenants?.cnt ?? 0),
+    suspendedTenants: Number(suspendedTenants?.cnt ?? 0),
+    trialingTenants: Number(trialingTenants?.cnt ?? 0),
+    totalUsers: Number(totalUsers?.cnt ?? 0),
+    totalProjects: Number(totalProjects?.cnt ?? 0),
+    dprsLast30Days: Number(dprsLast30?.cnt ?? 0),
+    newTenantsLast30Days: Number(newTenants?.cnt ?? 0),
+    signupsByDay: signupsByDayRaw.map((r) => ({
+      date: r.date,
+      count: Number(r.count),
+    })),
+  });
+});
+
+export default router;
