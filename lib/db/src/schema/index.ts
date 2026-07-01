@@ -1,6 +1,6 @@
 export * from "./auth";
 export * from "./ocms";
-export type { SubscriptionPlan, TenantSubscription, TenantInvitation, SubscriptionStatus } from "./ocms";
+export type { SubscriptionPlan, TenantSubscription, TenantInvitation, SubscriptionStatus, PlatformSetting, RazorpayPayment } from "./ocms";
 export type {
   DsrRate, Estimate, EstimateCostHead, BoqItem,
   RateAnalysisComponent, VariationOrder,

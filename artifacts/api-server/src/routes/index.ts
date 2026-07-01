@@ -33,6 +33,7 @@ import quotationsRouter from "./quotations";
 import statusHistoryRouter from "./status-history";
 import invitationsRouter from "./invitations";
 import subscriptionPlansRouter from "./subscription-plans";
+import paymentsRouter from "./payments";
 import adminPlatformRouter, { recordResponseTime } from "./admin-platform";
 import { requireProjectAccess } from "../lib/access";
 
@@ -57,6 +58,7 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(meRouter);
 router.use(subscriptionPlansRouter);
+router.use(paymentsRouter);
 router.use(adminRouter);
 router.use(customRolesRouter);
 router.use(modulesAccessRouter);

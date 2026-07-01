@@ -10,8 +10,9 @@ import {
   tenantSubscriptionsTable,
   tenantInvitationsTable,
   dprsTable,
+  platformSettingsTable,
 } from "@workspace/db";
-import { eq, sql, count, gte, desc } from "drizzle-orm";
+import { eq, sql, count, gte, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { isSuperAdmin } from "../lib/access";
 
@@ -567,6 +568,56 @@ router.get("/admin/system-stats", requireAuth, async (req: Request, res: Respons
       count: Number(r.count),
     })),
   });
+});
+
+// ── GET /admin/platform-settings/payment-gateway ───────────────────────────
+// Returns current payment gateway config. Secret is masked (never returned raw).
+
+const GATEWAY_KEYS = ["razorpay_key_id", "razorpay_key_secret", "razorpay_enabled", "razorpay_mode"] as const;
+
+router.get("/admin/platform-settings/payment-gateway", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const rows = await db
+    .select()
+    .from(platformSettingsTable)
+    .where(inArray(platformSettingsTable.key, [...GATEWAY_KEYS]));
+  const s = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+  res.json({
+    razorpay_enabled: s.razorpay_enabled ?? "false",
+    razorpay_key_id: s.razorpay_key_id ?? "",
+    razorpay_key_secret_set: !!s.razorpay_key_secret,
+    razorpay_mode: s.razorpay_mode ?? "test",
+  });
+});
+
+// ── PUT /admin/platform-settings/payment-gateway ────────────────────────────
+// Upserts payment gateway config. Only updates secret if provided.
+
+router.put("/admin/platform-settings/payment-gateway", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const userId = req.user!.id;
+  const { razorpay_enabled, razorpay_key_id, razorpay_key_secret, razorpay_mode } = req.body ?? {};
+
+  const upserts: { key: string; value: string; updatedById: string }[] = [
+    { key: "razorpay_enabled", value: razorpay_enabled === true ? "true" : "false", updatedById: userId },
+    { key: "razorpay_key_id", value: String(razorpay_key_id ?? ""), updatedById: userId },
+    { key: "razorpay_mode", value: razorpay_mode === "live" ? "live" : "test", updatedById: userId },
+  ];
+  if (razorpay_key_secret) {
+    upserts.push({ key: "razorpay_key_secret", value: String(razorpay_key_secret), updatedById: userId });
+  }
+
+  for (const row of upserts) {
+    await db
+      .insert(platformSettingsTable)
+      .values(row)
+      .onConflictDoUpdate({
+        target: platformSettingsTable.key,
+        set: { value: row.value, updatedById: userId, updatedAt: new Date() },
+      });
+  }
+
+  res.json({ success: true });
 });
 
 export default router;

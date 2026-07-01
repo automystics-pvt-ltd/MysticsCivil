@@ -11,6 +11,7 @@ import TenantDetail from "@/pages/tenant-detail";
 import Subscriptions from "@/pages/subscriptions";
 import Invitations from "@/pages/invitations";
 import CustomRoles from "@/pages/custom-roles";
+import SettingsPayment from "@/pages/settings-payment";
 import Login from "@/pages/login";
 
 const queryClient = new QueryClient({
@@ -54,6 +55,11 @@ function Router() {
       <Route path="/custom-roles">
         <AuthProvider>
           <CustomRoles />
+        </AuthProvider>
+      </Route>
+      <Route path="/settings/payment-gateway">
+        <AuthProvider>
+          <SettingsPayment />
         </AuthProvider>
       </Route>
       <Route component={NotFound} />

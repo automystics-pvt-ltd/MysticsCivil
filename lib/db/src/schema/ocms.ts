@@ -1961,3 +1961,43 @@ export const statusHistoryTable = pgTable("status_history", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type StatusHistory = typeof statusHistoryTable.$inferSelect;
+
+// ============================================================
+// PLATFORM SETTINGS (super-admin key-value store)
+// ============================================================
+
+/**
+ * Global key-value settings for the platform (e.g. payment gateway config).
+ * Keys are simple strings. Sensitive values (secrets) are stored here and
+ * never returned raw to the client — callers must mask them.
+ */
+export const platformSettingsTable = pgTable("platform_settings", {
+  key: varchar("key", { length: 128 }).primaryKey(),
+  value: text("value"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  updatedById: varchar("updated_by_id").references(() => usersTable.id, { onDelete: "set null" }),
+});
+export type PlatformSetting = typeof platformSettingsTable.$inferSelect;
+
+// ============================================================
+// RAZORPAY PAYMENT ORDERS (audit trail)
+// ============================================================
+
+export const razorpayPaymentsTable = pgTable("razorpay_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organisationId: varchar("organisation_id")
+    .notNull()
+    .references(() => organisationsTable.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id")
+    .notNull()
+    .references(() => subscriptionPlansTable.id, { onDelete: "restrict" }),
+  razorpayOrderId: varchar("razorpay_order_id", { length: 64 }).notNull().unique(),
+  razorpayPaymentId: varchar("razorpay_payment_id", { length: 64 }),
+  amountPaise: integer("amount_paise").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  createdById: varchar("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+export type RazorpayPayment = typeof razorpayPaymentsTable.$inferSelect;

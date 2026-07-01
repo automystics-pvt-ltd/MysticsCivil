@@ -2,11 +2,11 @@ import { Link, useLocation } from "wouter";
 import { 
   Building2, 
   LayoutDashboard, 
-  Users, 
   Mail, 
   LogOut,
   Settings,
   CreditCard,
+  Landmark,
 } from "lucide-react";
 import { useLogoutUser, useGetCurrentAuthUser, getGetCurrentAuthUserQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/invitations", label: "Invitations", icon: Mail },
   { href: "/custom-roles", label: "Custom Roles", icon: Settings },
+  { href: "/settings/payment-gateway", label: "Payment Gateway", icon: Landmark },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
