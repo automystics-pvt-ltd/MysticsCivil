@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { LocationSelect } from "@/components/location-select";
 
 const api = (path: string) => `/api${path}`;
 
@@ -22,9 +23,7 @@ const CLIENT_TYPES: Record<string, { label: string; color: string }> = {
   other: { label: "Other", color: "bg-gray-100 text-gray-700" },
 };
 
-const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Delhi","Jammu & Kashmir","Ladakh","Puducherry","Chandigarh"];
-
-const EMPTY: any = { name: "", contactPerson: "", email: "", phone: "", gstin: "", pan: "", address: "", city: "", state: "", pincode: "", clientType: "private", notes: "", leadId: "" };
+const EMPTY: any = { name: "", contactPerson: "", email: "", phone: "", gstin: "", pan: "", address: "", country: "IN", city: "", state: "", pincode: "", clientType: "private", notes: "", leadId: "" };
 
 export default function CustomersPage() {
   const [, setLocation] = useLocation();
@@ -66,7 +65,7 @@ export default function CustomersPage() {
   });
 
   function openCreate() { setForm(EMPTY); setEditing(null); setDialogOpen(true); }
-  function openEdit(c: any) { setForm({ ...c, notes: c.notes ?? "", gstin: c.gstin ?? "", pan: c.pan ?? "", address: c.address ?? "", city: c.city ?? "", state: c.state ?? "", pincode: c.pincode ?? "" }); setEditing(c); setDialogOpen(true); }
+  function openEdit(c: any) { setForm({ ...c, notes: c.notes ?? "", gstin: c.gstin ?? "", pan: c.pan ?? "", address: c.address ?? "", country: c.country ?? "IN", city: c.city ?? "", state: c.state ?? "", pincode: c.pincode ?? "" }); setEditing(c); setDialogOpen(true); }
 
   async function save() {
     setSaving(true);
@@ -178,17 +177,15 @@ export default function CustomersPage() {
               <div><Label>PAN</Label><Input value={form.pan} onChange={e => setForm((f: any) => ({ ...f, pan: e.target.value }))} placeholder="AAAAA0000A" /></div>
             </div>
             <div><Label>Address</Label><Textarea value={form.address} onChange={e => setForm((f: any) => ({ ...f, address: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-3 gap-3">
-              <div><Label>City</Label><Input value={form.city} onChange={e => setForm((f: any) => ({ ...f, city: e.target.value }))} /></div>
-              <div>
-                <Label>State</Label>
-                <Select value={form.state} onValueChange={v => setForm((f: any) => ({ ...f, state: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
-                  <SelectContent>{STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div><Label>Pincode</Label><Input value={form.pincode} onChange={e => setForm((f: any) => ({ ...f, pincode: e.target.value }))} /></div>
-            </div>
+            <LocationSelect
+              country={form.country}
+              state={form.state}
+              city={form.city}
+              onCountryChange={v => setForm((f: any) => ({ ...f, country: v, state: "", city: "" }))}
+              onStateChange={v => setForm((f: any) => ({ ...f, state: v, city: "" }))}
+              onCityChange={v => setForm((f: any) => ({ ...f, city: v }))}
+            />
+            <div><Label>Pincode</Label><Input value={form.pincode} onChange={e => setForm((f: any) => ({ ...f, pincode: e.target.value }))} /></div>
             <div><Label>Notes</Label><Textarea value={form.notes} onChange={e => setForm((f: any) => ({ ...f, notes: e.target.value }))} rows={2} /></div>
           </div>
           <div className="flex justify-end gap-2 pt-2">

@@ -7,7 +7,7 @@ import { getAccessCtx, isSuperAdmin } from "../lib/access";
 
 const router: IRouter = Router();
 
-const ORG_FIELDS = ["name", "legalName", "gstin", "pan", "address", "city", "state", "pincode", "logoUrl"] as const;
+const ORG_FIELDS = ["name", "legalName", "gstin", "pan", "address", "country", "city", "state", "pincode", "logoUrl"] as const;
 
 function parseOrgBody(b: any): Record<string, unknown> {
   const out: Record<string, unknown> = {};

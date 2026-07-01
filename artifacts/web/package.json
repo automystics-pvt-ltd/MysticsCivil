@@ -83,6 +83,7 @@
     "@uppy/core": "^5.2.0",
     "@uppy/dashboard": "^5.1.1",
     "@uppy/react": "^5.2.0",
+    "country-state-city": "^3.2.1",
     "papaparse": "^5.5.3",
     "xlsx": "^0.18.5"
   }

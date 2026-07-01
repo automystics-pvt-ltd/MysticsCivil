@@ -234,7 +234,7 @@ router.post("/vendors", requireAuth, requireRole(...ROLE_GROUPS.OWNER_PM), async
   const [row] = await db.insert(vendorsTable).values({
     name: b.name, code: b.code ?? null, contactPerson: b.contactPerson ?? null,
     email: b.email ?? null, phone: b.phone ?? null, address: b.address ?? null,
-    city: b.city ?? null, state: b.state ?? null, pincode: b.pincode ?? null,
+    country: b.country ?? null, city: b.city ?? null, state: b.state ?? null, pincode: b.pincode ?? null,
     gstNumber: b.gstNumber ?? null, pan: b.pan ?? null,
     msmeCategory: b.msmeCategory ?? null, msmeNumber: b.msmeNumber ?? null,
     bankName: b.bankName ?? null, accountNumber: b.accountNumber ?? null,
@@ -268,7 +268,7 @@ router.patch("/vendors/:vendorId", requireAuth, requireRole(...ROLE_GROUPS.OWNER
     }
   }
   const patch: Record<string, any> = {};
-  const fields = ["name","code","contactPerson","email","phone","address","city","state","pincode","gstNumber","pan","msmeCategory","msmeNumber","bankName","accountNumber","ifscCode","notes"];
+  const fields = ["name","code","contactPerson","email","phone","address","country","city","state","pincode","gstNumber","pan","msmeCategory","msmeNumber","bankName","accountNumber","ifscCode","notes"];
   for (const f of fields) if (b[f] !== undefined) patch[f] = b[f];
   if (b.status !== undefined) {
     patch.status = b.status;

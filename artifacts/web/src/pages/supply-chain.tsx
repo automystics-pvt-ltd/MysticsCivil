@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfirm } from "@/hooks/use-confirm";
+import { LocationSelect } from "@/components/location-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +67,7 @@ function VendorsTab({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const { confirm: askConfirm, dialog: confirmDialog } = useConfirm();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", code: "", contactPerson: "", email: "", phone: "", city: "", state: "", gstNumber: "", pan: "" });
+  const [form, setForm] = useState({ name: "", code: "", contactPerson: "", email: "", phone: "", country: "IN", city: "", state: "", gstNumber: "", pan: "" });
 
   const { data: vendors = [], isLoading } = useQuery<Vendor[]>({
     queryKey: ["vendors"],
@@ -82,7 +83,7 @@ function VendorsTab({ projectId }: { projectId: string }) {
 
   const createVendor = useMutation({
     mutationFn: (body: typeof form) => api("/vendors", { method: "POST", body: JSON.stringify(body) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); setForm({ name: "", code: "", contactPerson: "", email: "", phone: "", city: "", state: "", gstNumber: "", pan: "" }); toast({ title: "Vendor created" }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["vendors"] }); setOpen(false); setForm({ name: "", code: "", contactPerson: "", email: "", phone: "", country: "IN", city: "", state: "", gstNumber: "", pan: "" }); toast({ title: "Vendor created" }); },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
@@ -121,12 +122,22 @@ function VendorsTab({ projectId }: { projectId: string }) {
             <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>New Vendor</DialogTitle></DialogHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[["name","Name *"],["code","Code"],["contactPerson","Contact Person"],["email","Email"],["phone","Phone"],["city","City"],["state","State"],["gstNumber","GST Number"],["pan","PAN"]].map(([k, l]) => (
+                {[["name","Name *"],["code","Code"],["contactPerson","Contact Person"],["email","Email"],["phone","Phone"],["gstNumber","GST Number"],["pan","PAN"]].map(([k, l]) => (
                   <div key={k} className={k === "name" ? "col-span-2" : ""}>
                     <Label className="text-xs">{l}</Label>
                     <Input className="mt-1" value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} />
                   </div>
                 ))}
+              </div>
+              <div className="mt-2">
+                <LocationSelect
+                  country={form.country}
+                  state={form.state}
+                  city={form.city}
+                  onCountryChange={v => setForm(f => ({ ...f, country: v, state: "", city: "" }))}
+                  onStateChange={v => setForm(f => ({ ...f, state: v, city: "" }))}
+                  onCityChange={v => setForm(f => ({ ...f, city: v }))}
+                />
               </div>
               <Button className="w-full mt-2" disabled={createVendor.isPending} onClick={() => createVendor.mutate(form)}>
                 {createVendor.isPending ? "Creating…" : "Create Vendor"}

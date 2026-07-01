@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { LocationSelect } from "@/components/location-select";
 import {
   useListOrganisations,
   useCreateOrganisation,
@@ -30,6 +31,7 @@ type OrgForm = {
   gstin: string;
   pan: string;
   address: string;
+  country: string;
   city: string;
   state: string;
   pincode: string;
@@ -37,7 +39,7 @@ type OrgForm = {
 };
 
 const EMPTY_FORM: OrgForm = {
-  name: "", legalName: "", gstin: "", pan: "", address: "", city: "", state: "", pincode: "", logoUrl: "",
+  name: "", legalName: "", gstin: "", pan: "", address: "", country: "IN", city: "", state: "", pincode: "", logoUrl: "",
 };
 
 function toForm(o: Organisation): OrgForm {
@@ -47,6 +49,7 @@ function toForm(o: Organisation): OrgForm {
     gstin: o.gstin ?? "",
     pan: o.pan ?? "",
     address: o.address ?? "",
+    country: (o as any).country ?? "IN",
     city: o.city ?? "",
     state: o.state ?? "",
     pincode: o.pincode ?? "",
@@ -160,8 +163,16 @@ export default function Organisations() {
                 <div><Label>GSTIN</Label><Input value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} /></div>
                 <div><Label>PAN</Label><Input value={form.pan} onChange={(e) => setForm({ ...form, pan: e.target.value })} /></div>
                 <div className="col-span-2"><Label>Address</Label><Textarea rows={2} className="resize-none" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
-                <div><Label>City</Label><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
-                <div><Label>State</Label><Input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></div>
+                <div className="col-span-2">
+                  <LocationSelect
+                    country={form.country}
+                    state={form.state}
+                    city={form.city}
+                    onCountryChange={v => setForm({ ...form, country: v, state: "", city: "" })}
+                    onStateChange={v => setForm({ ...form, state: v, city: "" })}
+                    onCityChange={v => setForm({ ...form, city: v })}
+                  />
+                </div>
                 <div><Label>Pincode</Label><Input value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value })} /></div>
                 <div className="col-span-2">
                   <Label>Logo</Label>

@@ -49,7 +49,8 @@ router.post("/customers", requireAuth, async (req: Request, res: Response) => {
     organisationId: org, leadId: b.leadId || null, name: String(b.name).trim(),
     contactPerson: b.contactPerson?.trim() || null, email: b.email?.trim() || null,
     phone: b.phone?.trim() || null, gstin: b.gstin?.trim() || null, pan: b.pan?.trim() || null,
-    address: b.address?.trim() || null, city: b.city?.trim() || null, state: b.state?.trim() || null,
+    address: b.address?.trim() || null, country: b.country?.trim() || null,
+    city: b.city?.trim() || null, state: b.state?.trim() || null,
     pincode: b.pincode?.trim() || null, clientType: b.clientType ?? "private",
     notes: b.notes?.trim() || null, createdById: ctx.userId ?? null,
   }).returning();
@@ -72,6 +73,7 @@ router.patch("/customers/:id", requireAuth, async (req: Request, res: Response) 
   if (b.gstin !== undefined) updates.gstin = b.gstin || null;
   if (b.pan !== undefined) updates.pan = b.pan || null;
   if (b.address !== undefined) updates.address = b.address || null;
+  if (b.country !== undefined) updates.country = b.country || null;
   if (b.city !== undefined) updates.city = b.city || null;
   if (b.state !== undefined) updates.state = b.state || null;
   if (b.pincode !== undefined) updates.pincode = b.pincode || null;
