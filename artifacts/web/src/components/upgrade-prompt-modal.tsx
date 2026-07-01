@@ -6,15 +6,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useGetMyProfile, useGetOrgSubscription, getGetOrgSubscriptionQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Zap, Check, CreditCard, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Zap, Check, CreditCard, RefreshCw, CheckCircle2, Tag } from "lucide-react";
 
-interface Plan {
-  id: string;
-  slug: string;
-  name: string;
-  priceMonthly: string | null;
-  features: Record<string, boolean | string> | null;
-  sortOrder: number;
+interface EffectivePricingRow {
+  planId: string;
+  planName: string;
+  planSlug: string;
+  standardPrice: string;
+  effectivePrice: string;
+  hasCustomPrice: boolean;
 }
 
 interface UpgradePromptModalProps {
@@ -25,9 +25,7 @@ interface UpgradePromptModalProps {
 }
 
 declare global {
-  interface Window {
-    Razorpay: any;
-  }
+  interface Window { Razorpay: any; }
 }
 
 function loadRazorpayScript(): Promise<boolean> {
@@ -41,15 +39,15 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-async function fetchPlans(): Promise<Plan[]> {
-  const r = await fetch("/api/subscription-plans");
-  if (!r.ok) throw new Error("Failed to fetch plans");
-  return r.json();
-}
-
 async function fetchRazorpayConfig(): Promise<{ enabled: boolean; keyId: string | null }> {
   const r = await fetch("/api/payments/razorpay/config");
   if (!r.ok) return { enabled: false, keyId: null };
+  return r.json();
+}
+
+async function fetchMyPricing(): Promise<EffectivePricingRow[]> {
+  const r = await fetch("/api/payments/razorpay/my-pricing");
+  if (!r.ok) return [];
   return r.json();
 }
 
@@ -98,26 +96,26 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
   const orgId = profile?.organisationId ?? "";
   const queryClient = useQueryClient();
 
-  const [plans, setPlans] = useState<Plan[]>([]);
+  const [pricing, setPricing] = useState<EffectivePricingRow[]>([]);
   const [rzpConfig, setRzpConfig] = useState<{ enabled: boolean; keyId: string | null } | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!open) { setSuccess(false); return; }
-    setLoadingPlans(true);
-    Promise.all([fetchPlans(), fetchRazorpayConfig()])
-      .then(([fetchedPlans, cfg]) => {
-        const paid = fetchedPlans.filter((p) => Number(p.priceMonthly ?? 0) > 0);
-        setPlans(paid);
+    setLoading(true);
+    Promise.all([fetchMyPricing(), fetchRazorpayConfig()])
+      .then(([pricingRows, cfg]) => {
+        const paid = pricingRows.filter((p) => Number(p.effectivePrice ?? 0) > 0);
+        setPricing(paid);
         setRzpConfig(cfg);
-        const target = paid.find((p) => p.name.toLowerCase() === planRequired.toLowerCase()) ?? paid[0] ?? null;
-        setSelectedPlanId(target?.id ?? null);
+        const target = paid.find((p) => p.planName.toLowerCase() === planRequired.toLowerCase()) ?? paid[0] ?? null;
+        setSelectedPlanId(target?.planId ?? null);
       })
       .catch(() => {})
-      .finally(() => setLoadingPlans(false));
+      .finally(() => setLoading(false));
   }, [open, planRequired]);
 
   const handlePay = useCallback(async () => {
@@ -147,9 +145,7 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
               queryClient.invalidateQueries({ queryKey: getGetOrgSubscriptionQueryKey(orgId) });
               setSuccess(true);
               resolve();
-            } catch (e: any) {
-              reject(e);
-            }
+            } catch (e: any) { reject(e); }
           },
           modal: { ondismiss: () => reject(new Error("cancelled")) },
         });
@@ -164,8 +160,9 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
     }
   }, [selectedPlanId, orgId, queryClient, toast]);
 
-  const selectedPlan = plans.find((p) => p.id === selectedPlanId);
-  const features = FEATURE_HIGHLIGHTS[(selectedPlan?.slug ?? selectedPlan?.name ?? "").toLowerCase()] ?? FEATURE_HIGHLIGHTS.professional;
+  const selectedPricing = pricing.find((p) => p.planId === selectedPlanId);
+  const features = FEATURE_HIGHLIGHTS[(selectedPricing?.planSlug ?? selectedPricing?.planName ?? "").toLowerCase()] ?? FEATURE_HIGHLIGHTS.professional;
+  const effectivePrice = Number(selectedPricing?.effectivePrice ?? 0);
 
   if (success) {
     return (
@@ -178,7 +175,7 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
             <div>
               <h2 className="text-xl font-bold">Payment successful!</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Your plan has been upgraded to <strong>{selectedPlan?.name}</strong>. Enjoy the new features.
+                Your plan has been upgraded to <strong>{selectedPricing?.planName}</strong>. Enjoy the new features.
               </p>
             </div>
             <Button onClick={() => onOpenChange(false)} className="w-full">Done</Button>
@@ -206,37 +203,57 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
           </DialogDescription>
         </DialogHeader>
 
-        {loadingPlans ? (
+        {loading ? (
           <div className="space-y-3">
-            <Skeleton className="h-20 w-full" />
-            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-16 w-full" />
           </div>
-        ) : plans.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No paid plans are available. Contact your administrator.</p>
+        ) : pricing.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No paid plans available. Contact your administrator.</p>
         ) : (
           <>
             <div className="space-y-2">
-              {plans.map((plan) => {
-                const price = Number(plan.priceMonthly ?? 0);
-                const isSelected = plan.id === selectedPlanId;
+              {pricing.map((row) => {
+                const price = Number(row.effectivePrice ?? 0);
+                const stdPrice = Number(row.standardPrice ?? 0);
+                const isSelected = row.planId === selectedPlanId;
+                const hasDiscount = row.hasCustomPrice && price < stdPrice;
                 return (
                   <button
-                    key={plan.id}
-                    onClick={() => setSelectedPlanId(plan.id)}
+                    key={row.planId}
+                    onClick={() => setSelectedPlanId(row.planId)}
                     className={`w-full text-left rounded-lg border px-4 py-3 transition-all ${
                       isSelected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:border-primary/40"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm">{plan.name}</span>
-                      <span className="text-sm font-bold">₹{price.toLocaleString("en-IN")}<span className="text-xs font-normal text-muted-foreground">/mo</span></span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{row.planName}</span>
+                        {row.hasCustomPrice && (
+                          <Badge variant="secondary" className="text-[10px] gap-1 py-0 px-1.5">
+                            <Tag className="h-2.5 w-2.5" />
+                            Special price
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold">
+                          ₹{price.toLocaleString("en-IN")}
+                          <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                        </span>
+                        {hasDiscount && (
+                          <div className="text-[10px] text-muted-foreground line-through">
+                            ₹{stdPrice.toLocaleString("en-IN")}/mo
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            {selectedPlan && (
+            {selectedPricing && (
               <ul className="space-y-1.5 mt-1">
                 {features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm">
@@ -251,7 +268,7 @@ export function UpgradePromptModal({ open, onOpenChange, featureName, planRequir
               {rzpConfig?.enabled ? (
                 <Button onClick={handlePay} disabled={paying || !selectedPlanId} className="w-full gap-2">
                   {paying ? <RefreshCw className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                  {paying ? "Processing…" : `Pay ₹${Number(selectedPlan?.priceMonthly ?? 0).toLocaleString("en-IN")}/mo`}
+                  {paying ? "Processing…" : `Pay ₹${effectivePrice.toLocaleString("en-IN")}/mo`}
                 </Button>
               ) : (
                 <Button className="w-full gap-2" asChild>

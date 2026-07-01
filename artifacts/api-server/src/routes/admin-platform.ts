@@ -11,6 +11,7 @@ import {
   tenantInvitationsTable,
   dprsTable,
   platformSettingsTable,
+  tenantCustomPricingTable,
 } from "@workspace/db";
 import { eq, sql, count, gte, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -568,6 +569,77 @@ router.get("/admin/system-stats", requireAuth, async (req: Request, res: Respons
       count: Number(r.count),
     })),
   });
+});
+
+// ── GET /admin/tenants/:orgId/custom-pricing ──────────────────────────────
+// Returns all custom price rows for this org, merged with plan catalogue.
+
+router.get("/admin/tenants/:orgId/custom-pricing", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { orgId } = req.params;
+
+  const [plans, customRows] = await Promise.all([
+    db.select({ id: subscriptionPlansTable.id, name: subscriptionPlansTable.name, slug: subscriptionPlansTable.slug, priceMonthly: subscriptionPlansTable.priceMonthly })
+      .from(subscriptionPlansTable)
+      .where(eq(subscriptionPlansTable.isActive, true))
+      .orderBy(subscriptionPlansTable.sortOrder),
+    db.select().from(tenantCustomPricingTable).where(eq(tenantCustomPricingTable.organisationId, orgId)),
+  ]);
+
+  const customMap = new Map(customRows.map((r) => [r.planId, r]));
+
+  res.json(
+    plans.map((p) => {
+      const custom = customMap.get(p.id);
+      return {
+        planId: p.id,
+        planName: p.name,
+        planSlug: p.slug,
+        standardPrice: p.priceMonthly,
+        customPriceMonthly: custom?.customPriceMonthly ?? null,
+        note: custom?.note ?? null,
+        hasCustomPrice: !!custom,
+      };
+    }),
+  );
+});
+
+// ── PUT /admin/tenants/:orgId/custom-pricing/:planId ──────────────────────
+// Upsert a custom price for a specific plan for this org.
+
+router.put("/admin/tenants/:orgId/custom-pricing/:planId", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { orgId, planId } = req.params;
+  const userId = req.user!.id;
+  const { customPriceMonthly, note } = req.body ?? {};
+
+  if (customPriceMonthly === undefined || isNaN(Number(customPriceMonthly)) || Number(customPriceMonthly) < 0) {
+    res.status(400).json({ error: "customPriceMonthly must be a non-negative number" });
+    return;
+  }
+
+  await db
+    .insert(tenantCustomPricingTable)
+    .values({ organisationId: orgId, planId, customPriceMonthly: String(customPriceMonthly), note: note ?? null, createdById: userId })
+    .onConflictDoUpdate({
+      target: [tenantCustomPricingTable.organisationId, tenantCustomPricingTable.planId],
+      set: { customPriceMonthly: String(customPriceMonthly), note: note ?? null, updatedAt: new Date() },
+    });
+
+  res.json({ success: true });
+});
+
+// ── DELETE /admin/tenants/:orgId/custom-pricing/:planId ───────────────────
+// Remove the custom price override — reverts to standard plan price.
+
+router.delete("/admin/tenants/:orgId/custom-pricing/:planId", requireAuth, async (req: Request, res: Response) => {
+  if (!(await assertSuperAdmin(req, res))) return;
+  const { orgId, planId } = req.params;
+  const { and } = await import("drizzle-orm");
+  await db
+    .delete(tenantCustomPricingTable)
+    .where(and(eq(tenantCustomPricingTable.organisationId, orgId), eq(tenantCustomPricingTable.planId, planId)));
+  res.json({ success: true });
 });
 
 // ── GET /admin/platform-settings/payment-gateway ───────────────────────────

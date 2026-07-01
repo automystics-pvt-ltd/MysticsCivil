@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
-import { db, subscriptionPlansTable, tenantSubscriptionsTable, razorpayPaymentsTable, userProfilesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { db, subscriptionPlansTable, tenantSubscriptionsTable, razorpayPaymentsTable, userProfilesTable, tenantCustomPricingTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { getRazorpayClient, getRazorpayPublicConfig, verifyRazorpaySignature, getRazorpaySecret } from "../lib/razorpay";
 
@@ -17,8 +17,52 @@ router.get("/payments/razorpay/config", async (_req: Request, res: Response) => 
 });
 
 /**
+ * GET /payments/razorpay/my-pricing
+ * Returns effective prices for all plans for the authenticated user's org.
+ * Custom prices take precedence over standard plan prices.
+ */
+router.get("/payments/razorpay/my-pricing", requireAuth, async (req: Request, res: Response) => {
+  const userId = req.user!.id;
+
+  const [profile] = await db
+    .select({ organisationId: userProfilesTable.organisationId })
+    .from(userProfilesTable)
+    .where(eq(userProfilesTable.userId, userId))
+    .limit(1);
+
+  if (!profile?.organisationId) {
+    res.json([]);
+    return;
+  }
+
+  const [plans, customRows] = await Promise.all([
+    db.select({ id: subscriptionPlansTable.id, name: subscriptionPlansTable.name, slug: subscriptionPlansTable.slug, priceMonthly: subscriptionPlansTable.priceMonthly, sortOrder: subscriptionPlansTable.sortOrder })
+      .from(subscriptionPlansTable)
+      .where(eq(subscriptionPlansTable.isActive, true))
+      .orderBy(subscriptionPlansTable.sortOrder),
+    db.select({ planId: tenantCustomPricingTable.planId, customPriceMonthly: tenantCustomPricingTable.customPriceMonthly })
+      .from(tenantCustomPricingTable)
+      .where(eq(tenantCustomPricingTable.organisationId, profile.organisationId)),
+  ]);
+
+  const customMap = new Map(customRows.map((r) => [r.planId, r.customPriceMonthly]));
+
+  res.json(
+    plans.map((p) => ({
+      planId: p.id,
+      planName: p.name,
+      planSlug: p.slug,
+      standardPrice: p.priceMonthly,
+      effectivePrice: customMap.has(p.id) ? customMap.get(p.id)! : p.priceMonthly,
+      hasCustomPrice: customMap.has(p.id),
+    })),
+  );
+});
+
+/**
  * POST /payments/razorpay/create-order
  * Creates a Razorpay order for upgrading to a given plan.
+ * Uses custom price if set for this org, otherwise standard plan price.
  * Requires auth. Body: { planId: string }
  */
 router.post("/payments/razorpay/create-order", requireAuth, async (req: Request, res: Response) => {
@@ -47,14 +91,6 @@ router.post("/payments/razorpay/create-order", requireAuth, async (req: Request,
     return;
   }
 
-  const priceRupees = Number(plan.priceMonthly ?? 0);
-  if (priceRupees <= 0) {
-    res.status(400).json({ error: "This plan is free and does not require payment." });
-    return;
-  }
-
-  const amountPaise = Math.round(priceRupees * 100);
-
   const [profile] = await db
     .select({ organisationId: userProfilesTable.organisationId })
     .from(userProfilesTable)
@@ -65,6 +101,20 @@ router.post("/payments/razorpay/create-order", requireAuth, async (req: Request,
     res.status(400).json({ error: "User has no organisation" });
     return;
   }
+
+  // Check for a custom price negotiated for this org, fall back to plan standard price.
+  const [customRow] = await db
+    .select({ customPriceMonthly: tenantCustomPricingTable.customPriceMonthly })
+    .from(tenantCustomPricingTable)
+    .where(and(eq(tenantCustomPricingTable.organisationId, profile.organisationId), eq(tenantCustomPricingTable.planId, planId)))
+    .limit(1);
+
+  const priceRupees = Number(customRow?.customPriceMonthly ?? plan.priceMonthly ?? 0);
+  if (priceRupees <= 0) {
+    res.status(400).json({ error: "This plan is free and does not require payment." });
+    return;
+  }
+  const amountPaise = Math.round(priceRupees * 100);
 
   const order = await rzp.client.orders.create({
     amount: amountPaise,

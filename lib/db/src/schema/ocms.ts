@@ -1963,6 +1963,37 @@ export const statusHistoryTable = pgTable("status_history", {
 export type StatusHistory = typeof statusHistoryTable.$inferSelect;
 
 // ============================================================
+// TENANT CUSTOM PRICING (per-org price overrides per plan)
+// ============================================================
+
+/**
+ * When a platform admin negotiates a special deal for a specific tenant,
+ * they record a custom price here. The payment flow checks this table first
+ * before falling back to the plan's standard price.
+ *
+ * One row per (organisationId, planId) pair.
+ */
+export const tenantCustomPricingTable = pgTable(
+  "tenant_custom_pricing",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    organisationId: varchar("organisation_id")
+      .notNull()
+      .references(() => organisationsTable.id, { onDelete: "cascade" }),
+    planId: varchar("plan_id")
+      .notNull()
+      .references(() => subscriptionPlansTable.id, { onDelete: "cascade" }),
+    customPriceMonthly: numeric("custom_price_monthly", { precision: 12, scale: 2 }).notNull(),
+    note: text("note"),
+    createdById: varchar("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (t) => ({ uniq: uniqueIndex("tcp_org_plan_uniq").on(t.organisationId, t.planId) }),
+);
+export type TenantCustomPricing = typeof tenantCustomPricingTable.$inferSelect;
+
+// ============================================================
 // PLATFORM SETTINGS (super-admin key-value store)
 // ============================================================
 

@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Building2, ArrowLeft, Loader2, Save } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Building2, ArrowLeft, Loader2, Save, Tag, X, CheckCircle2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -14,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const subscriptionSchema = z.object({
   planId: z.string().optional(),
@@ -26,6 +27,188 @@ const subscriptionSchema = z.object({
     maxStorageGb: z.coerce.number().optional()
   }).optional()
 });
+
+interface CustomPricingRow {
+  planId: string;
+  planName: string;
+  planSlug: string;
+  standardPrice: string;
+  customPriceMonthly: string | null;
+  note: string | null;
+  hasCustomPrice: boolean;
+}
+
+function CustomPricingCard({ orgId }: { orgId: string }) {
+  const { toast } = useToast();
+  const [rows, setRows] = useState<CustomPricingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [edits, setEdits] = useState<Record<string, { price: string; note: string }>>({});
+
+  async function loadPricing() {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/admin/tenants/${orgId}/custom-pricing`);
+      if (!r.ok) throw new Error("Failed to load");
+      const data: CustomPricingRow[] = await r.json();
+      setRows(data);
+      const init: Record<string, { price: string; note: string }> = {};
+      data.forEach((row) => {
+        init[row.planId] = {
+          price: row.customPriceMonthly ?? "",
+          note: row.note ?? "",
+        };
+      });
+      setEdits(init);
+    } catch {
+      toast({ title: "Error", description: "Failed to load custom pricing", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadPricing(); }, [orgId]);
+
+  async function handleSave(planId: string) {
+    const edit = edits[planId];
+    if (!edit) return;
+    const price = Number(edit.price);
+    if (isNaN(price) || price < 0) {
+      toast({ title: "Invalid price", description: "Enter a valid non-negative number.", variant: "destructive" });
+      return;
+    }
+    setSaving(planId);
+    try {
+      const r = await fetch(`/api/admin/tenants/${orgId}/custom-pricing/${planId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customPriceMonthly: price, note: edit.note || null }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed to save");
+      await loadPricing();
+      toast({ title: "Saved", description: "Custom price updated." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function handleRemove(planId: string) {
+    setSaving(planId);
+    try {
+      const r = await fetch(`/api/admin/tenants/${orgId}/custom-pricing/${planId}`, { method: "DELETE" });
+      if (!r.ok) throw new Error((await r.json()).error ?? "Failed to remove");
+      await loadPricing();
+      toast({ title: "Removed", description: "Reverted to standard price." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  const paidPlans = rows.filter((r) => Number(r.standardPrice ?? 0) > 0);
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Tag className="h-4 w-4 text-blue-600" />
+          <CardTitle className="text-base">Custom Pricing</CardTitle>
+        </div>
+        <CardDescription>
+          Override plan prices for this tenant. Leave blank to use the standard plan price.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+          </div>
+        ) : paidPlans.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-4">No paid plans configured in the platform yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {paidPlans.map((row, i) => {
+              const edit = edits[row.planId] ?? { price: "", note: "" };
+              const isSavingThis = saving === row.planId;
+              const isDirty = edit.price !== (row.customPriceMonthly ?? "") || edit.note !== (row.note ?? "");
+              return (
+                <div key={row.planId}>
+                  {i > 0 && <Separator className="mb-4" />}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">{row.planName}</span>
+                        {row.hasCustomPrice && (
+                          <Badge variant="secondary" className="text-xs gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Custom price active
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">Standard: ₹{Number(row.standardPrice).toLocaleString("en-IN")}/mo</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Custom price (₹/mo)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder={`Standard: ₹${Number(row.standardPrice).toLocaleString("en-IN")}`}
+                          value={edit.price}
+                          onChange={(e) => setEdits((prev) => ({ ...prev, [row.planId]: { ...edit, price: e.target.value } }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Note (optional)</label>
+                        <Input
+                          placeholder="e.g. Annual deal, Partner rate"
+                          value={edit.note}
+                          onChange={(e) => setEdits((prev) => ({ ...prev, [row.planId]: { ...edit, note: e.target.value } }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant={isDirty ? "default" : "outline"}
+                        disabled={isSavingThis || !edit.price}
+                        onClick={() => handleSave(row.planId)}
+                        className="h-7 text-xs gap-1"
+                      >
+                        {isSavingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save price
+                      </Button>
+                      {row.hasCustomPrice && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={isSavingThis}
+                          onClick={() => handleRemove(row.planId)}
+                          className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                        >
+                          <X className="h-3 w-3" />
+                          Revert to standard
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function TenantDetail() {
   const params = useParams();
@@ -43,11 +226,7 @@ export default function TenantDetail() {
       planId: undefined,
       status: "active",
       trialEndsAt: null,
-      limitsOverride: {
-        maxProjects: 0,
-        maxUsers: 0,
-        maxStorageGb: 0
-      }
+      limitsOverride: { maxProjects: 0, maxUsers: 0, maxStorageGb: 0 }
     }
   });
 
@@ -71,7 +250,6 @@ export default function TenantDetail() {
 
   const onSubmit = async (data: z.infer<typeof subscriptionSchema>) => {
     try {
-      // Ensure we send correct payload format
       const payload = {
         status: data.status,
         planId: data.planId,
@@ -89,17 +267,9 @@ export default function TenantDetail() {
         queryClient.invalidateQueries({ queryKey: getGetAdminTenantQueryKey(orgId) }),
         queryClient.invalidateQueries({ queryKey: getListAdminTenantsQueryKey() })
       ]);
-      
-      toast({
-        title: "Subscription updated",
-        description: "The tenant's subscription configuration has been saved."
-      });
+      toast({ title: "Subscription updated", description: "The tenant's subscription configuration has been saved." });
     } catch (error: any) {
-      toast({
-        title: "Failed to update",
-        description: error.message || "An error occurred while saving.",
-        variant: "destructive"
-      });
+      toast({ title: "Failed to update", description: error.message || "An error occurred while saving.", variant: "destructive" });
     }
   };
 
@@ -180,7 +350,7 @@ export default function TenantDetail() {
             </Card>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-6">
             <Card className="shadow-sm">
               <CardHeader>
                 <CardTitle>Subscription Configuration</CardTitle>
@@ -207,7 +377,7 @@ export default function TenantDetail() {
                               <SelectContent>
                                 {subscription.availablePlans?.map(p => (
                                   <SelectItem key={p.id} value={p.id}>
-                                    {p.name} (${p.priceMonthly}/mo)
+                                    {p.name} (₹{Number(p.priceMonthly).toLocaleString("en-IN")}/mo)
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -311,6 +481,8 @@ export default function TenantDetail() {
                 </Form>
               </CardContent>
             </Card>
+
+            <CustomPricingCard orgId={orgId} />
           </div>
         </div>
       </div>
